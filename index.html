@@ -1,1190 +1,863 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DinnerSpin 🍽️</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <title>DinnerSpin 🍽️ – Was kochen wir heute?</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --cream: #FAF6EF;
-      --warm: #F5ECD7;
-      --rust: #C4522A;
-      --rust-light: #E8734A;
-      --forest: #2D5A3D;
-      --forest-light: #4A8C63;
-      --gold: #D4A843;
-      --dark: #1A1208;
-      --mid: #5C4A2A;
-      --text: #2C1F0E;
-      --card-bg: #FFFDF8;
-      --border: #E8DCC8;
+      --cream:#FAF5EC; --warm:#F2E8D5; --warm2:#EAD9BC;
+      --rust:#B84A2A; --rust-light:#D96040;
+      --forest:#2A5438; --forest-light:#3D7A52;
+      --gold:#C99830; --gold-light:#E5B94A;
+      --dark:#1A0F05; --mid:#5A3E1E; --text:#2A1A08;
+      --card:#FFFDF7; --border:#DDD0B8; --shadow:rgba(42,26,8,.10);
     }
-
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--cream);
-      color: var(--text);
-      min-height: 100vh;
-      overflow-x: hidden;
+    html { scroll-behavior:smooth; }
+    body { font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--text); min-height:100vh; overflow-x:hidden; }
+    body::after {
+      content:''; position:fixed; inset:0; pointer-events:none; z-index:9998;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      opacity:.5;
     }
-
-    /* Grain overlay */
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none; z-index: 9999; opacity: 0.4;
-    }
-
     header {
-      background: var(--forest);
-      color: var(--cream);
-      padding: 1.5rem 2rem;
-      display: flex; align-items: center; justify-content: space-between;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+      background:linear-gradient(135deg,var(--forest) 0%,#1E3D2A 100%);
+      padding:1.2rem 2rem; display:flex; align-items:center; justify-content:space-between;
+      gap:1rem; flex-wrap:wrap; box-shadow:0 4px 24px rgba(0,0,0,.2);
+      position:sticky; top:0; z-index:100;
     }
-
-    header h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: 2rem;
-      letter-spacing: -0.5px;
-    }
-
-    header h1 span { color: var(--gold); }
-
-    .header-sub {
-      font-size: 0.85rem;
-      opacity: 0.7;
-      margin-top: 2px;
-    }
-
-    .persona-toggle {
-      display: flex; gap: 0.5rem;
-    }
-
+    .logo { display:flex; align-items:center; gap:.75rem; }
+    .logo-icon { font-size:2rem; }
+    .logo-text h1 { font-family:'Playfair Display',serif; font-size:1.6rem; color:var(--cream); line-height:1; }
+    .logo-text h1 span { color:var(--gold-light); }
+    .logo-text p { font-size:.78rem; color:rgba(255,255,255,.6); margin-top:2px; }
+    .persona-wrap { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+    .persona-label { font-size:.75rem; color:rgba(255,255,255,.55); line-height:1.4; }
     .persona-btn {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.25);
-      color: white;
-      padding: 0.4rem 0.9rem;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-family: 'DM Sans', sans-serif;
-      transition: all 0.2s;
+      background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.2);
+      color:rgba(255,255,255,.85); padding:.35rem .85rem; border-radius:20px;
+      cursor:pointer; font-size:.82rem; font-family:'DM Sans',sans-serif; transition:all .2s;
     }
-
-    .persona-btn.active {
-      background: var(--gold);
-      border-color: var(--gold);
-      color: var(--dark);
-      font-weight: 600;
+    .persona-btn.active { background:var(--gold); border-color:var(--gold); color:var(--dark); font-weight:600; }
+    .persona-btn:hover:not(.active) { background:rgba(255,255,255,.18); }
+    .main-wrap {
+      max-width:1280px; margin:0 auto; padding:2rem;
+      display:grid; grid-template-columns:1fr 360px; gap:2rem;
     }
-
-    .main-layout {
-      display: grid;
-      grid-template-columns: 1fr 380px;
-      gap: 2rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    /* WHEEL SECTION */
-    .wheel-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1.5rem;
-    }
-
-    .wheel-wrapper {
-      position: relative;
-      width: 380px;
-      height: 380px;
-    }
-
+    .wheel-col { display:flex; flex-direction:column; align-items:center; gap:1.5rem; }
+    .wheel-outer { position:relative; width:400px; height:400px; }
     .wheel-pointer {
-      position: absolute;
-      top: -18px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 0;
-      height: 0;
-      border-left: 14px solid transparent;
-      border-right: 14px solid transparent;
-      border-top: 28px solid var(--rust);
-      z-index: 10;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
+      position:absolute; top:-20px; left:50%; transform:translateX(-50%);
+      width:0; height:0; border-left:15px solid transparent; border-right:15px solid transparent;
+      border-top:30px solid var(--rust); z-index:10;
+      filter:drop-shadow(0 3px 6px rgba(0,0,0,.3));
     }
-
-    #wheel-canvas {
-      border-radius: 50%;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.2), 0 0 0 6px var(--warm), 0 0 0 8px var(--border);
-      transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-    }
-
+    #wheel { border-radius:50%; box-shadow:0 0 0 6px var(--warm2),0 0 0 9px var(--border),0 12px 40px rgba(0,0,0,.2); }
     .spin-btn {
-      background: var(--rust);
-      color: white;
-      border: none;
-      padding: 1rem 3rem;
-      font-size: 1.1rem;
-      font-family: 'Playfair Display', serif;
-      font-weight: 700;
-      border-radius: 50px;
-      cursor: pointer;
-      box-shadow: 0 4px 20px rgba(196,82,42,0.4);
-      transition: all 0.2s;
-      letter-spacing: 0.5px;
+      background:linear-gradient(135deg,var(--rust) 0%,var(--rust-light) 100%);
+      color:#fff; border:none; padding:1rem 2.5rem; font-size:1.05rem;
+      font-family:'Playfair Display',serif; font-weight:700; border-radius:50px; cursor:pointer;
+      letter-spacing:.5px; box-shadow:0 6px 22px rgba(184,74,42,.4); transition:all .2s;
     }
-
-    .spin-btn:hover { background: var(--rust-light); transform: translateY(-2px); box-shadow: 0 6px 25px rgba(196,82,42,0.5); }
-    .spin-btn:active { transform: translateY(0); }
-    .spin-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-    /* RESULT CARD */
+    .spin-btn:hover { transform:translateY(-3px); box-shadow:0 9px 28px rgba(184,74,42,.5); }
+    .spin-btn:active { transform:translateY(-1px); }
+    .spin-btn:disabled { opacity:.55; cursor:not-allowed; transform:none; }
     .result-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 1.5rem;
-      width: 100%;
-      max-width: 480px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-      display: none;
-      animation: slideUp 0.4s ease;
+      display:none; width:100%; max-width:500px; background:var(--card);
+      border:1px solid var(--border); border-radius:22px; padding:1.5rem;
+      box-shadow:0 6px 28px var(--shadow);
     }
-
-    .result-card.visible { display: block; }
-
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    .result-card.show { display:block; animation:popIn .35s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes popIn { from{opacity:0;transform:scale(.94) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    .result-header { display:flex; gap:1rem; align-items:flex-start; margin-bottom:.75rem; }
+    .result-emoji { font-size:3rem; line-height:1; }
+    .result-meta { flex:1; }
+    .result-name { font-family:'Playfair Display',serif; font-size:1.6rem; color:var(--forest); line-height:1.15; margin-bottom:.25rem; }
+    .result-cuisine { font-size:.8rem; color:var(--mid); }
+    .result-time { background:var(--warm); border:1px solid var(--border); border-radius:8px; padding:.3rem .65rem; font-size:.78rem; font-weight:600; color:var(--mid); white-space:nowrap; }
+    .tags { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:1rem; }
+    .tag { padding:.22rem .65rem; border-radius:20px; font-size:.72rem; font-weight:500; border:1px solid; }
+    .tag-high-prot { background:#EEF4FF; border-color:#BDD0F5; color:#2B4BA0; }
+    .tag-low-kcal  { background:#EAF5EC; border-color:#A8D4B0; color:#1F6B35; }
+    .tag-high-fib  { background:#FFF8EC; border-color:#F0D890; color:#8A6200; }
+    .tag-schnell   { background:#FFF0F0; border-color:#F5C0B0; color:#9A2510; }
+    .tag-veg       { background:#F0F9EE; border-color:#B0DCA8; color:#246B1E; }
+    .nutri-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; margin-bottom:.75rem; }
+    .nutri-box { background:var(--warm); border-radius:12px; padding:.6rem .4rem; text-align:center; border:1px solid var(--border); }
+    .nutri-val { font-family:'Playfair Display',serif; font-size:1.15rem; font-weight:700; }
+    .nutri-label { font-size:.65rem; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
+    .kcal-bar-wrap { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:.25rem; }
+    .kcal-bar { height:100%; border-radius:3px; transition:width .6s ease,background .4s; }
+    .kcal-pct { font-size:.7rem; color:var(--mid); text-align:right; margin-bottom:.9rem; }
+    .source-link { display:inline-flex; align-items:center; gap:.3rem; font-size:.75rem; color:var(--forest-light); text-decoration:none; margin-bottom:1rem; }
+    .source-link:hover { text-decoration:underline; }
+    .result-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
+    .btn { cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .2s; border-radius:10px; font-size:.85rem; padding:.55rem 1.1rem; }
+    .btn-ghost { background:transparent; border:1.5px solid var(--border); color:var(--mid); }
+    .btn-ghost:hover { background:var(--warm); border-color:var(--gold); color:var(--text); }
+    .btn-fill { background:var(--forest); color:#fff; border:none; font-weight:500; }
+    .btn-fill:hover { background:var(--forest-light); }
+    .btn-gold { background:var(--gold); color:var(--dark); border:none; font-weight:600; }
+    .btn-gold:hover { background:var(--gold-light); }
+    .btn-rust { background:var(--rust); color:#fff; border:none; font-weight:600; }
+    .btn-rust:hover { background:var(--rust-light); }
+    .sidebar { display:flex; flex-direction:column; gap:1.5rem; }
+    .panel { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:1.25rem; box-shadow:0 2px 12px var(--shadow); }
+    .panel-title { font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--forest); margin-bottom:1rem; display:flex; align-items:center; justify-content:space-between; }
+    .filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; }
+    .fc { background:var(--warm); border:1.5px solid var(--border); color:var(--mid); padding:.45rem .6rem; border-radius:10px; cursor:pointer; font-size:.78rem; font-family:'DM Sans',sans-serif; text-align:center; transition:all .2s; user-select:none; }
+    .fc.on { background:var(--forest); border-color:var(--forest); color:#fff; font-weight:500; }
+    .fc:hover:not(.on) { border-color:var(--gold); }
+    .grocery-empty { font-size:.85rem; color:var(--mid); text-align:center; padding:1.25rem .5rem; line-height:1.6; }
+    .store-section-title { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--mid); margin:.65rem 0 .3rem; }
+    .grocery-item { display:flex; align-items:center; gap:.5rem; padding:.3rem 0; border-bottom:1px dashed var(--border); font-size:.84rem; }
+    .grocery-item input[type=checkbox] { accent-color:var(--forest); width:15px; height:15px; flex-shrink:0; }
+    .grocery-item.done label { text-decoration:line-through; color:#aaa; }
+    .grocery-item label { cursor:pointer; }
+    .browser-wrap { max-width:1280px; margin:0 auto; padding:0 2rem 3rem; }
+    .browser-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem; }
+    .browser-title { font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--forest); }
+    .meal-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:1rem; }
+    .meal-card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:1.1rem; cursor:pointer; transition:all .2s; box-shadow:0 2px 8px var(--shadow); }
+    .meal-card:hover { transform:translateY(-4px); box-shadow:0 10px 28px rgba(42,26,8,.14); border-color:var(--gold); }
+    .card-emoji { font-size:2.2rem; margin-bottom:.4rem; }
+    .card-name { font-weight:600; font-size:.95rem; color:var(--text); margin-bottom:.2rem; }
+    .card-sub { font-size:.72rem; color:var(--mid); margin-bottom:.5rem; }
+    .card-badges { display:flex; gap:.3rem; flex-wrap:wrap; }
+    .badge { font-size:.66rem; padding:.12rem .4rem; border-radius:6px; font-weight:500; }
+    .b-kcal { background:#FCEEE8; color:#9A2510; }
+    .b-prot { background:#EEF4FF; color:#2B4BA0; }
+    .b-fib  { background:#EAF5EC; color:#1F6B35; }
+    .overlay {
+      display:none; position:fixed; inset:0;
+      background:rgba(26,15,5,.65); backdrop-filter:blur(5px);
+      z-index:500; align-items:center; justify-content:center;
     }
-
-    .result-meal-name {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.8rem;
-      color: var(--forest);
-      margin-bottom: 0.25rem;
-    }
-
-    .result-tags {
-      display: flex; gap: 0.4rem; flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-
-    .tag {
-      background: var(--warm);
-      border: 1px solid var(--border);
-      color: var(--mid);
-      padding: 0.2rem 0.65rem;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 500;
-    }
-
-    .tag.high { background: #FCEEE8; border-color: #F0B8A0; color: var(--rust); }
-    .tag.low { background: #EAF5EC; border-color: #A8D4B0; color: var(--forest); }
-
-    .nutrition-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-    }
-
-    .nutri-box {
-      background: var(--warm);
-      border-radius: 12px;
-      padding: 0.6rem 0.5rem;
-      text-align: center;
-    }
-
-    .nutri-val {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--forest);
-    }
-
-    .nutri-label {
-      font-size: 0.68rem;
-      color: var(--mid);
-      margin-top: 2px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .result-actions {
-      display: flex; gap: 0.75rem;
-    }
-
-    .btn-secondary {
-      background: transparent;
-      border: 1.5px solid var(--border);
-      color: var(--mid);
-      padding: 0.55rem 1.1rem;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-family: 'DM Sans', sans-serif;
-      transition: all 0.2s;
-    }
-
-    .btn-secondary:hover { background: var(--warm); border-color: var(--gold); color: var(--text); }
-
-    .btn-primary-sm {
-      background: var(--forest);
-      color: white;
-      border: none;
-      padding: 0.55rem 1.2rem;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-family: 'DM Sans', sans-serif;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
-
-    .btn-primary-sm:hover { background: var(--forest-light); }
-
-    /* SIDEBAR */
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    .panel {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 1.25rem;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-    }
-
-    .panel-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.1rem;
-      color: var(--forest);
-      margin-bottom: 1rem;
-      display: flex; align-items: center; gap: 0.4rem;
-    }
-
-    /* FILTERS */
-    .filter-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
-    }
-
-    .filter-chip {
-      background: var(--warm);
-      border: 1.5px solid var(--border);
-      color: var(--mid);
-      padding: 0.45rem 0.7rem;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      font-family: 'DM Sans', sans-serif;
-      text-align: center;
-      transition: all 0.2s;
-      user-select: none;
-    }
-
-    .filter-chip.active {
-      background: var(--forest);
-      border-color: var(--forest);
-      color: white;
-    }
-
-    /* GROCERY LIST */
-    .grocery-week {
-      margin-bottom: 0.75rem;
-    }
-
-    .grocery-day {
-      font-weight: 600;
-      font-size: 0.8rem;
-      color: var(--mid);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 0.25rem;
-    }
-
-    .grocery-meal {
-      font-size: 0.9rem;
-      color: var(--text);
-      padding: 0.3rem 0.5rem;
-      background: var(--warm);
-      border-radius: 8px;
-      margin-bottom: 0.2rem;
-      cursor: pointer;
-    }
-
-    .grocery-meal:hover { background: var(--border); }
-
-    .grocery-items {
-      margin-top: 0.75rem;
-      border-top: 1px solid var(--border);
-      padding-top: 0.75rem;
-    }
-
-    .grocery-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.3rem 0;
-      font-size: 0.85rem;
-      border-bottom: 1px dashed var(--border);
-    }
-
-    .grocery-item input[type="checkbox"] {
-      accent-color: var(--forest);
-      width: 16px; height: 16px;
-    }
-
-    .grocery-item.checked label { text-decoration: line-through; color: #999; }
-
-    .store-badge {
-      font-size: 0.7rem;
-      padding: 0.1rem 0.4rem;
-      border-radius: 6px;
-      font-weight: 600;
-      margin-left: auto;
-    }
-
-    .store-spar { background: #e8f5e9; color: #2e7d32; }
-    .store-hofer { background: #fff3e0; color: #e65100; }
-
-    /* MEAL BROWSER */
-    .meal-browser {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 2rem 3rem;
-    }
-
-    .browser-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.6rem;
-      color: var(--forest);
-      margin-bottom: 1.25rem;
-    }
-
-    .meal-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 1rem;
-    }
-
-    .meal-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 1rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-
-    .meal-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-      border-color: var(--gold);
-    }
-
-    .meal-card-emoji {
-      font-size: 2.2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .meal-card-name {
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: var(--text);
-      margin-bottom: 0.4rem;
-    }
-
-    .meal-card-mini-stats {
-      display: flex; gap: 0.4rem; flex-wrap: wrap;
-    }
-
-    .mini-stat {
-      font-size: 0.7rem;
-      padding: 0.15rem 0.4rem;
-      border-radius: 6px;
-      font-weight: 500;
-    }
-
-    .mini-kcal { background: #FFF0E8; color: #C4522A; }
-    .mini-prot { background: #E8F0FF; color: #3553C0; }
-    .mini-fiber { background: #EAF5EC; color: #2D5A3D; }
-
-    .week-planner-btn {
-      background: var(--gold);
-      color: var(--dark);
-      border: none;
-      padding: 0.8rem 2rem;
-      border-radius: 50px;
-      cursor: pointer;
-      font-size: 1rem;
-      font-family: 'Playfair Display', serif;
-      font-weight: 700;
-      margin-bottom: 1.5rem;
-      transition: all 0.2s;
-      box-shadow: 0 4px 16px rgba(212,168,67,0.35);
-    }
-
-    .week-planner-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(212,168,67,0.5); }
-
-    /* WEEKLY PLAN MODAL */
-    .modal-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(26,18,8,0.6);
-      backdrop-filter: blur(4px);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal-overlay.open { display: flex; }
-
+    .overlay.open { display:flex; }
     .modal {
-      background: var(--card-bg);
-      border-radius: 24px;
-      padding: 2rem;
-      max-width: 700px;
-      width: 95vw;
-      max-height: 85vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      animation: slideUp 0.3s ease;
+      background:var(--card); border-radius:24px; padding:2rem;
+      width:min(720px,95vw); max-height:88vh; overflow-y:auto;
+      box-shadow:0 24px 70px rgba(0,0,0,.35);
+      animation:popIn .3s cubic-bezier(.34,1.56,.64,1);
     }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
+    .modal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; }
+    .modal-title { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--forest); }
+    .close-btn { background:var(--warm); border:none; width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; }
+    .week-row { display:grid; grid-template-columns:90px 1fr auto; gap:.75rem; align-items:center; padding:.5rem 0; border-bottom:1px solid var(--border); }
+    .week-day { font-weight:600; font-size:.8rem; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; }
+    .week-meal { font-size:.88rem; padding:.35rem .7rem; background:var(--warm); border-radius:8px; }
+    .week-sub { font-size:.68rem; color:var(--mid); margin-top:2px; }
+    .week-respin { background:none; border:1.5px solid var(--border); width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+    .week-respin:hover { background:var(--warm); border-color:var(--gold); }
+    .modal-actions { display:flex; gap:.75rem; margin-top:1.5rem; flex-wrap:wrap; }
+    .rezept-modal { width:min(680px,95vw); }
+    .rezept-hero { display:flex; gap:1rem; align-items:flex-start; margin-bottom:1.25rem; flex-wrap:wrap; }
+    .rezept-emoji-big { font-size:4rem; line-height:1; }
+    .rezept-hero-meta { flex:1; }
+    .rezept-hero-name { font-family:'Playfair Display',serif; font-size:1.8rem; color:var(--forest); line-height:1.1; margin-bottom:.3rem; }
+    .rezept-hero-sub { font-size:.85rem; color:var(--mid); margin-bottom:.6rem; }
+    .rezept-stats { display:flex; gap:.5rem; flex-wrap:wrap; }
+    .rstat { background:var(--warm); border:1px solid var(--border); border-radius:8px; padding:.3rem .65rem; font-size:.78rem; font-weight:500; color:var(--mid); }
+    .rezept-nutri-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:.5rem; margin-bottom:1.5rem; }
+    .rnutri { background:var(--warm); border-radius:10px; padding:.5rem .3rem; text-align:center; border:1px solid var(--border); }
+    .rnutri-val { font-family:'Playfair Display',serif; font-size:1.1rem; font-weight:700; }
+    .rnutri-lbl { font-size:.62rem; color:var(--mid); text-transform:uppercase; letter-spacing:.4px; margin-top:1px; }
+    .rezept-section { margin-bottom:1.25rem; }
+    .rezept-section-title { font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--forest); margin-bottom:.75rem; padding-bottom:.35rem; border-bottom:2px solid var(--warm2); }
+    .zutaten-list { list-style:none; }
+    .zutaten-list li { display:flex; align-items:center; gap:.6rem; padding:.4rem 0; border-bottom:1px dashed var(--border); font-size:.88rem; }
+    .zutaten-list li:last-child { border-bottom:none; }
+    .z-dot { width:6px; height:6px; border-radius:50%; background:var(--gold); flex-shrink:0; }
+    .z-store { margin-left:auto; font-size:.68rem; font-weight:600; padding:.1rem .4rem; border-radius:5px; white-space:nowrap; }
+    .z-spar  { background:#e8f5e9; color:#2e7d32; }
+    .z-hofer { background:#fff3e0; color:#e65100; }
+    .schritte-list { list-style:none; counter-reset:steps; }
+    .schritte-list li {
+      counter-increment:steps;
+      display:grid; grid-template-columns:32px 1fr;
+      gap:.75rem; align-items:flex-start;
+      padding:.65rem 0; border-bottom:1px solid var(--border);
+      font-size:.88rem; line-height:1.55;
     }
-
-    .modal-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.5rem;
-      color: var(--forest);
+    .schritte-list li:last-child { border-bottom:none; }
+    .schritte-list li::before {
+      content:counter(steps);
+      background:var(--forest); color:#fff;
+      width:28px; height:28px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:.78rem; font-weight:700; flex-shrink:0; margin-top:.1rem;
     }
-
-    .close-btn {
-      background: var(--warm);
-      border: none;
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: 1.1rem;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    .week-day-row {
-      display: grid;
-      grid-template-columns: 100px 1fr auto;
-      gap: 0.75rem;
-      align-items: center;
-      margin-bottom: 0.6rem;
-      padding-bottom: 0.6rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .week-day-label {
-      font-weight: 600;
-      font-size: 0.85rem;
-      color: var(--mid);
-    }
-
-    .week-meal-display {
-      font-size: 0.9rem;
-      padding: 0.4rem 0.75rem;
-      background: var(--warm);
-      border-radius: 8px;
-    }
-
-    .week-respin {
-      background: none;
-      border: 1.5px solid var(--border);
-      width: 32px; height: 32px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s;
-    }
-
-    .week-respin:hover { background: var(--warm); border-color: var(--gold); }
-
-    .modal-actions {
-      display: flex; gap: 0.75rem; margin-top: 1.5rem;
-    }
-
-    .kcal-bar-wrapper {
-      margin-top: 0.4rem;
-      height: 4px;
-      background: var(--border);
-      border-radius: 2px;
-      overflow: hidden;
-    }
-
-    .kcal-bar {
-      height: 100%;
-      border-radius: 2px;
-      transition: width 0.5s ease;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 2rem;
-      color: var(--mid);
-      font-size: 0.9rem;
-    }
-
-    @media (max-width: 900px) {
-      .main-layout {
-        grid-template-columns: 1fr;
-        padding: 1rem;
-      }
-      .wheel-wrapper { width: 300px; height: 300px; }
-    }
+    .tipp-box { background:#FFF8EC; border:1px solid #F0D890; border-radius:12px; padding:.85rem 1rem; font-size:.82rem; color:#6A4C00; line-height:1.55; margin-top:1rem; }
+    .tipp-box strong { color:#8A6200; }
+    @media(max-width:920px) { .main-wrap{grid-template-columns:1fr;padding:1.25rem;} .wheel-outer{width:320px;height:320px;} }
+    @media(max-width:500px) { .wheel-outer{width:280px;height:280px;} header{padding:1rem;} .rezept-nutri-grid{grid-template-columns:repeat(3,1fr);} }
   </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <h1>Dinner<span>Spin</span> 🍽️</h1>
-    <div class="header-sub">Your weekly dinner & grocery companion</div>
+  <div class="logo">
+    <div class="logo-icon">🍽️</div>
+    <div class="logo-text">
+      <h1>Dinner<span>Spin</span></h1>
+      <p>Was kochen wir heute Abend?</p>
+    </div>
   </div>
-  <div class="persona-toggle">
-    <button class="persona-btn active" onclick="setPersona('both')" id="btn-both">👫 Both</button>
-    <button class="persona-btn" onclick="setPersona('male')" id="btn-male">♂ Him</button>
-    <button class="persona-btn" onclick="setPersona('female')" id="btn-female">♀ Her</button>
+  <div class="persona-wrap">
+    <span class="persona-label">Nährwerte anzeigen für:</span>
+    <button class="persona-btn active" id="btn-beide" onclick="setPersona('beide')">👫 Beide</button>
+    <button class="persona-btn" id="btn-er" onclick="setPersona('er')">♂ Nur er</button>
+    <button class="persona-btn" id="btn-sie" onclick="setPersona('sie')">♀ Nur sie</button>
   </div>
 </header>
 
-<div class="main-layout">
-
-  <!-- WHEEL + RESULT -->
-  <div class="wheel-section">
-    <div class="wheel-wrapper">
+<div class="main-wrap">
+  <div class="wheel-col">
+    <div class="wheel-outer">
       <div class="wheel-pointer"></div>
-      <canvas id="wheel-canvas" width="380" height="380"></canvas>
+      <canvas id="wheel" width="400" height="400"></canvas>
     </div>
-
-    <button class="spin-btn" id="spinBtn" onclick="spin()">🎲 Spin for Tonight's Dinner</button>
-
+    <button class="spin-btn" id="spinBtn" onclick="drehen()">🎲 Dreh das Rad!</button>
     <div class="result-card" id="resultCard">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
-        <div>
-          <div style="font-size:2.5rem;" id="resultEmoji">🍝</div>
-          <div class="result-meal-name" id="resultName">Pasta Bolognese</div>
+      <div class="result-header">
+        <div class="result-emoji" id="rEmoji"></div>
+        <div class="result-meta">
+          <div class="result-name" id="rName"></div>
+          <div class="result-cuisine" id="rCuisine"></div>
         </div>
-        <div style="text-align:right; font-size:0.8rem; color:var(--mid);" id="resultKcalNote"></div>
+        <div class="result-time" id="rTime"></div>
       </div>
-      <div class="result-tags" id="resultTags"></div>
-      <div class="nutrition-grid" id="nutritionGrid"></div>
-      <div class="kcal-bar-wrapper"><div class="kcal-bar" id="kcalBar" style="width:0%;background:var(--rust)"></div></div>
-      <div style="font-size:0.72rem;color:var(--mid);margin: 0.3rem 0 1rem;text-align:right;" id="kcalPercent"></div>
+      <div class="tags" id="rTags"></div>
+      <div class="nutri-grid" id="rNutri"></div>
+      <div class="kcal-bar-wrap"><div class="kcal-bar" id="kcalBar"></div></div>
+      <div class="kcal-pct" id="kcalPct"></div>
+      <a class="source-link" id="rSource" href="#" target="_blank" rel="noopener"></a>
       <div class="result-actions">
-        <button class="btn-secondary" onclick="spin()">🔄 Re-spin</button>
-        <button class="btn-secondary" onclick="openModal()">📅 Plan Week</button>
-        <button class="btn-primary-sm" onclick="addToGrocery(currentMeal)">🛒 Add to List</button>
+        <button class="btn btn-ghost" onclick="drehen()">🔄 Neu drehen</button>
+        <button class="btn btn-rust" onclick="rezeptOeffnen(aktuell)">📖 Rezept ansehen</button>
+        <button class="btn btn-fill" onclick="zurEinkaufsliste(aktuell)">🛒 Einkaufsliste</button>
       </div>
     </div>
   </div>
 
-  <!-- SIDEBAR -->
   <div class="sidebar">
-
-    <!-- FILTERS -->
     <div class="panel">
-      <div class="panel-title">⚗️ Nutritional Filters</div>
+      <div class="panel-title">⚗️ Filter</div>
       <div class="filter-grid">
-        <div class="filter-chip active" onclick="toggleFilter(this,'all')" data-filter="all">🍽️ All Meals</div>
-        <div class="filter-chip" onclick="toggleFilter(this,'low-kcal')" data-filter="low-kcal">🥗 Low Calorie</div>
-        <div class="filter-chip" onclick="toggleFilter(this,'high-protein')" data-filter="high-protein">💪 High Protein</div>
-        <div class="filter-chip" onclick="toggleFilter(this,'high-fiber')" data-filter="high-fiber">🌾 High Fiber</div>
-        <div class="filter-chip" onclick="toggleFilter(this,'quick')" data-filter="quick">⚡ Quick (≤30 min)</div>
-        <div class="filter-chip" onclick="toggleFilter(this,'vegetarian')" data-filter="vegetarian">🌿 Vegetarian</div>
+        <div class="fc on" onclick="filterWechseln(this,'alle')"               data-f="alle">🍽️ Alle</div>
+        <div class="fc"    onclick="filterWechseln(this,'schnell')"            data-f="schnell">⚡ &lt;30 Minuten</div>
+        <div class="fc"    onclick="filterWechseln(this,'wenig-kcal')"         data-f="wenig-kcal">🥗 Wenig Kalorien</div>
+        <div class="fc"    onclick="filterWechseln(this,'viel-protein')"       data-f="viel-protein">💪 Viel Protein</div>
+        <div class="fc"    onclick="filterWechseln(this,'viel-ballaststoffe')" data-f="viel-ballaststoffe">🌾 Viel Ballaststoffe</div>
+        <div class="fc"    onclick="filterWechseln(this,'vegetarisch')"        data-f="vegetarisch">🌿 Vegetarisch</div>
       </div>
     </div>
-
-    <!-- GROCERY LIST -->
-    <div class="panel" style="flex:1;">
-      <div class="panel-title" style="justify-content:space-between;">
-        <span>🛒 Grocery List</span>
-        <button class="btn-secondary" style="font-size:0.75rem;padding:0.25rem 0.6rem;" onclick="clearGrocery()">Clear</button>
+    <div class="panel" style="flex:1">
+      <div class="panel-title">
+        <span>🛒 Einkaufsliste</span>
+        <button class="btn btn-ghost" style="font-size:.73rem;padding:.2rem .55rem;" onclick="listeLeeren()">Leeren</button>
       </div>
-      <div id="groceryList">
-        <div class="empty-state">Spin the wheel or plan your week to auto-generate your shopping list 🎯</div>
+      <div id="listeContainer">
+        <div class="grocery-empty">Dreh das Rad oder erstelle einen Wochenplan – deine Einkaufsliste wird automatisch befüllt 🎯</div>
       </div>
-      <div id="groceryItemsSection" style="display:none;">
-        <div class="grocery-items" id="groceryItems"></div>
-        <button class="btn-primary-sm" style="margin-top:0.75rem;width:100%;text-align:center;" onclick="exportGrocery()">📤 Export List</button>
+      <div id="listeExport" style="display:none;margin-top:.75rem;">
+        <button class="btn btn-fill" style="width:100%;text-align:center;" onclick="exportieren()">📤 Als Textdatei speichern</button>
       </div>
     </div>
   </div>
-
 </div>
 
-<!-- MEAL BROWSER -->
-<div class="meal-browser">
-  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
-    <div class="browser-title">📖 All Meals</div>
-    <button class="week-planner-btn" onclick="openModal()">📅 Plan the Whole Week</button>
+<div class="browser-wrap">
+  <div class="browser-header">
+    <div class="browser-title">📖 Alle Rezepte</div>
+    <button class="btn btn-gold" onclick="wocheOeffnen()">📅 Wochenplan erstellen</button>
   </div>
-  <div class="meal-grid" id="mealGrid"></div>
+  <div class="meal-grid" id="rezeptGrid"></div>
 </div>
 
-<!-- WEEKLY PLAN MODAL -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+<!-- WOCHENPLAN MODAL -->
+<div class="overlay" id="overlayWoche" onclick="overlayZu(event,'overlayWoche')">
   <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">📅 Weekly Dinner Plan</div>
-      <button class="close-btn" onclick="closeModal()">✕</button>
+    <div class="modal-head">
+      <div class="modal-title">📅 Wochenplan</div>
+      <button class="close-btn" onclick="wocheSchliessen()">✕</button>
     </div>
-    <div id="weekPlanRows"></div>
+    <div id="wocheRows"></div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="reshuffleAll()">🔀 Reshuffle All</button>
-      <button class="btn-primary-sm" onclick="addAllToGrocery()">🛒 Add All to Grocery</button>
+      <button class="btn btn-ghost" onclick="alleMischeln()">🔀 Alles neu mischen</button>
+      <button class="btn btn-fill" onclick="alleZurListe()">🛒 Alle zur Einkaufsliste</button>
+      <button class="btn btn-gold" onclick="wocheSchliessen()">✓ Fertig</button>
     </div>
+  </div>
+</div>
+
+<!-- REZEPT MODAL -->
+<div class="overlay" id="overlayRezept" onclick="overlayZu(event,'overlayRezept')">
+  <div class="modal rezept-modal">
+    <div class="modal-head">
+      <div class="modal-title" id="rmTitle"></div>
+      <button class="close-btn" onclick="rezeptSchliessen()">✕</button>
+    </div>
+    <div id="rezeptModalInhalt"></div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════
-//  MEAL DATABASE
-// ═══════════════════════════════════════════════════════
-const MEALS = [
+const REZEPTE = [
   {
-    id:1, name:'Pasta Bolognese', emoji:'🍝', cuisine:'Italian',
-    tags:['high-protein','quick'], vegetarian:false,
-    time:25,
-    male:  { kcal:680, protein:38, fiber:6,  fat:24, carbs:72 },
-    female:{ kcal:520, protein:29, fiber:5,  fat:18, carbs:56 },
-    ingredients:[
-      {name:'Minced beef 500g', store:'hofer'},{name:'Spaghetti 400g', store:'spar'},
-      {name:'Tomato passata', store:'spar'},{name:'Onion x2', store:'hofer'},
-      {name:'Garlic', store:'spar'},{name:'Parmesan', store:'spar'}
-    ]
+    id:1, name:'Krautrouladen', emoji:'🥬',
+    küche:'Österreichisch · Hausmannskost',
+    tags:['viel-protein'], vegetarisch:false, zeit:90,
+    quelle:'https://www.instagram.com/reel/DU3tm3wDLsx/', quelleText:'Instagram – Krautrouladen',
+    er:{kcal:550,protein:32,ballaststoffe:5,fett:18,kh:52},
+    sie:{kcal:420,protein:24,ballaststoffe:4,fett:14,kh:40},
+    zutaten:[
+      {name:'Weißkohl (1 Kopf, ca. 1 kg)',laden:'hofer'},
+      {name:'Rinderhackfleisch 600 g',laden:'hofer'},
+      {name:'Zwiebeln 2 Stk.',laden:'hofer'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Rohreis / Langkornreis 100 g',laden:'spar'},
+      {name:'Ei 1 Stk.',laden:'hofer'},
+      {name:'Paprikapulver (edelsüß)',laden:'spar'},
+      {name:'Tomatensauce 400 g',laden:'spar'},
+      {name:'Rindssuppe / Brühe 400 ml',laden:'spar'},
+      {name:'Salz, Pfeffer, Majoran',laden:'spar'},
+      {name:'Butter oder Öl zum Anbraten',laden:'hofer'},
+    ],
+    schritte:[
+      'Weißkohlblätter vorsichtig ablösen. Einen großen Topf Salzwasser aufkochen und die Blätter 3–4 Minuten blanchieren bis sie biegsam sind. Herausnehmen und abkühlen lassen.',
+      'Reis in Salzwasser halb vorgaren (ca. 8 Min.), abgießen und abkühlen lassen.',
+      'Zwiebeln fein würfeln, die Hälfte in etwas Butter glasig anschwitzen. Mit Knoblauch, Paprikapulver, Salz und Pfeffer würzen.',
+      'Hackfleisch mit dem vorgegarten Reis, den angeschwitzten Zwiebeln, dem Ei und Majoran gut vermengen. Abschmecken.',
+      'Je 2–3 EL Hackfüllung auf ein Kohlblatt geben, die Seiten einfalten und fest aufrollen.',
+      'Die Rouladen von beiden Seiten in Butter anbraten bis sie Farbe haben. Restliche Zwiebeln kurz mitrösten.',
+      'Mit Tomatensauce und Rindssuppe aufgießen. Bei mittlerer Hitze zugedeckt 45–50 Minuten schmoren lassen.',
+      'Sauce abschmecken. Mit Kartoffeln, Semmelknödeln oder Brot servieren.',
+    ],
+    tipp:'Noch besser schmecken Krautrouladen am nächsten Tag – also ruhig eine größere Portion machen!',
   },
   {
-    id:2, name:'Chicken Stir-fry', emoji:'🍜', cuisine:'Asian',
-    tags:['high-protein','low-kcal','quick'], vegetarian:false,
-    time:20,
-    male:  { kcal:520, protein:45, fiber:8,  fat:14, carbs:42 },
-    female:{ kcal:400, protein:35, fiber:7,  fat:10, carbs:32 },
-    ingredients:[
-      {name:'Chicken breast 600g', store:'hofer'},{name:'Bell peppers x2', store:'spar'},
-      {name:'Broccoli', store:'spar'},{name:'Soy sauce', store:'spar'},
-      {name:'Sesame oil', store:'spar'},{name:'Rice 300g', store:'hofer'}
-    ]
+    id:2, name:'Pinsa Romana', emoji:'🍕',
+    küche:'Italienisch · Leichte Pizza',
+    tags:['schnell'], vegetarisch:false, zeit:25,
+    quelle:'https://www.instagram.com/reel/DN3X0MsRAXR/', quelleText:'Instagram – Pinsa',
+    er:{kcal:680,protein:28,ballaststoffe:4,fett:24,kh:78},
+    sie:{kcal:560,protein:22,ballaststoffe:3,fett:19,kh:64},
+    zutaten:[
+      {name:'Pinsa-Böden 2 Stk. (Kühlregal)',laden:'spar'},
+      {name:'Tomatensauce passierte 200 g',laden:'spar'},
+      {name:'Büffelmozzarella 250 g',laden:'spar'},
+      {name:'Serrano- oder Prosciutto-Schinken 80 g',laden:'spar'},
+      {name:'Rucola 50 g',laden:'spar'},
+      {name:'Parmesan am Stück 40 g',laden:'spar'},
+      {name:'Olivenöl extra vergine',laden:'spar'},
+      {name:'Basilikum frisch',laden:'hofer'},
+      {name:'Salz, Pfeffer, Oregano',laden:'spar'},
+    ],
+    schritte:[
+      'Backofen auf 230 °C Ober-/Unterhitze (210 °C Heißluft) vorheizen. Ein Backblech mit hineingeben damit es heiß wird.',
+      'Tomatensauce mit Salz, Pfeffer und Oregano würzen. Dünn auf den Pinsa-Böden verteilen – Rand frei lassen.',
+      'Mozzarella in Scheiben oder grob reißen und gleichmäßig verteilen.',
+      'Pinse auf das heiße Blech legen und 10–12 Minuten backen bis der Rand goldbraun und der Käse blubbernd ist.',
+      'Aus dem Ofen nehmen, Schinken darauflegen – er soll nicht mitbacken damit er zart bleibt.',
+      'Rucola darüber, Parmesan grob darüber hobeln, mit Olivenöl beträufeln und mit Basilikum garnieren.',
+    ],
+    tipp:'Das Geheimnis der Pinsa: Der Teig aus Weizen-, Soja- und Reismehl ist luftiger und bekömmlicher als normaler Pizzateig. Die Böden gibt es bei Spar im Kühlregal.',
   },
   {
-    id:3, name:'Lentil Soup', emoji:'🍲', cuisine:'Eastern European',
-    tags:['high-fiber','vegetarian','low-kcal'], vegetarian:true,
-    time:35,
-    male:  { kcal:380, protein:22, fiber:18, fat:8,  carbs:52 },
-    female:{ kcal:300, protein:17, fiber:15, fat:6,  carbs:40 },
-    ingredients:[
-      {name:'Red lentils 400g', store:'hofer'},{name:'Carrots x3', store:'spar'},
-      {name:'Celery', store:'spar'},{name:'Cumin', store:'spar'},
-      {name:'Vegetable stock', store:'hofer'},{name:'Lemon x1', store:'spar'}
-    ]
+    id:3, name:'Pasta al Forno', emoji:'🍝',
+    küche:'Italienisch · Sonntagsgericht',
+    tags:['viel-protein'], vegetarisch:false, zeit:120,
+    quelle:'https://ricette.giallozafferano.it/Pasta-al-forno.html', quelleText:'GialloZafferano – Pasta al Forno',
+    er:{kcal:940,protein:45,ballaststoffe:6,fett:49,kh:81},
+    sie:{kcal:720,protein:35,ballaststoffe:5,fett:38,kh:63},
+    zutaten:[
+      {name:'Rigatoni oder Ziti 500 g',laden:'spar'},
+      {name:'Rinderhackfleisch 400 g',laden:'hofer'},
+      {name:'Scamorza affumicata 300 g',laden:'spar'},
+      {name:'Eier 3 Stk.',laden:'hofer'},
+      {name:'Mehl 50 g',laden:'spar'},
+      {name:'Butter 50 g',laden:'hofer'},
+      {name:'Milch 500 ml',laden:'hofer'},
+      {name:'Tomatensauce (passata) 800 g',laden:'spar'},
+      {name:'Parmesan gerieben 80 g',laden:'spar'},
+      {name:'Olivenöl, Salz, Pfeffer, Muskat',laden:'spar'},
+    ],
+    schritte:[
+      'Eier hart kochen (10 Min.), abkühlen, schälen und in Scheiben schneiden.',
+      'Besciamella: Butter schmelzen, Mehl einrühren und 2 Min. anschwitzen. Milch nach und nach einrühren, unter ständigem Rühren aufkochen bis die Sauce eindickt. Mit Salz und Muskat abschmecken.',
+      'Hackfleisch in Olivenöl scharf anbraten. Mit Tomatensauce ablöschen, 20 Min. köcheln lassen, abschmecken.',
+      'Pasta in reichlich Salzwasser sehr al dente kochen (2 Min. kürzer als auf der Packung). Abgießen.',
+      'Pasta mit dem Fleischsugo vermengen.',
+      'Eine große Auflaufform einölen. Lagen aufbauen: Pasta-Sugo → Besciamella → Scamorza in Scheiben → Eier → Parmesan. Wiederholen bis alles aufgebraucht ist. Mit Parmesan und Butterflöckchen abschließen.',
+      'Im auf 200 °C vorgeheizten Backofen 30–35 Min. goldbraun überbacken.',
+      'Vor dem Servieren 10 Minuten ruhen lassen damit sich alles setzt.',
+    ],
+    tipp:'Am Vortag vorbereiten und am nächsten Tag backen funktioniert perfekt. Dieses Gericht ist üppig – dafür braucht man keinen zweiten Gang.',
   },
   {
-    id:4, name:'Salmon with Veggies', emoji:'🐟', cuisine:'Nordic',
-    tags:['high-protein','low-kcal'], vegetarian:false,
-    time:30,
-    male:  { kcal:540, protein:48, fiber:5,  fat:28, carbs:18 },
-    female:{ kcal:420, protein:38, fiber:4,  fat:22, carbs:14 },
-    ingredients:[
-      {name:'Salmon fillet 2x200g', store:'spar'},{name:'Zucchini x2', store:'hofer'},
-      {name:'Cherry tomatoes', store:'spar'},{name:'Olive oil', store:'spar'},
-      {name:'Lemon x1', store:'spar'},{name:'Dill', store:'hofer'}
-    ]
+    id:4, name:'Reis-Bowl mit Lachs', emoji:'🐟',
+    küche:'Asiatisch-inspiriert · Bowl',
+    tags:['viel-protein','wenig-kcal'], vegetarisch:false, zeit:30,
+    quelle:'https://www.instagram.com/reel/DRciDDkCIQf/', quelleText:'Instagram – Reis-Bowl',
+    er:{kcal:515,protein:38,ballaststoffe:6,fett:16,kh:44},
+    sie:{kcal:395,protein:29,ballaststoffe:5,fett:12,kh:34},
+    zutaten:[
+      {name:'Lachsfilet 2 × 180 g (ohne Haut)',laden:'spar'},
+      {name:'Sushi-Reis oder Basmatireis 300 g',laden:'spar'},
+      {name:'Avocado 1 Stk.',laden:'spar'},
+      {name:'Salatgurke ½ Stk.',laden:'hofer'},
+      {name:'Edamame (TK) 150 g',laden:'spar'},
+      {name:'Rote Paprika 1 Stk.',laden:'hofer'},
+      {name:'Sojasoße 3 EL',laden:'spar'},
+      {name:'Sesamöl 1 TL',laden:'spar'},
+      {name:'Reisessig 1 EL',laden:'spar'},
+      {name:'Ingwer frisch oder Paste',laden:'spar'},
+      {name:'Sesam, Frühlingszwiebeln',laden:'spar'},
+    ],
+    schritte:[
+      'Reis nach Packungsanweisung kochen. Für Sushi-Reis: Reisessig, 1 TL Zucker und eine Prise Salz einrühren, abkühlen lassen.',
+      'Lachs mit Salz, Pfeffer und etwas Sojasoße würzen. In beschichteter Pfanne mit etwas Öl je 3–4 Min. pro Seite braten – innen soll er noch leicht rosa sein.',
+      'Avocado halbieren, Kern entfernen, aus der Schale lösen und in Scheiben schneiden.',
+      'Gurke in dünne Scheiben schneiden. Paprika in feine Streifen.',
+      'Edamame nach Packungsangabe auftauen oder kurz in Salzwasser blanchieren.',
+      'Dressing: Sojasoße, Sesamöl, Reisessig und frisch geriebenen Ingwer verrühren.',
+      'Bowl aufbauen: Reis als Basis, dann Lachs, Avocado, Gurke, Paprika und Edamame ordentlich nebeneinander anrichten. Dressing darüber, Sesam und Frühlingszwiebel-Ringe drüber streuen.',
+    ],
+    tipp:'Lachs kann auch roh als Sashimi verwendet werden – dann unbedingt Sushi-Qualität kaufen.',
   },
   {
-    id:5, name:'Veggie Buddha Bowl', emoji:'🥗', cuisine:'International',
-    tags:['high-fiber','vegetarian','low-kcal','quick'], vegetarian:true,
-    time:20,
-    male:  { kcal:460, protein:18, fiber:14, fat:16, carbs:58 },
-    female:{ kcal:360, protein:14, fiber:12, fat:12, carbs:44 },
-    ingredients:[
-      {name:'Chickpeas 400g can', store:'hofer'},{name:'Quinoa 200g', store:'spar'},
-      {name:'Avocado x1', store:'spar'},{name:'Cucumber', store:'hofer'},
-      {name:'Tahini', store:'spar'},{name:'Mixed greens', store:'spar'}
-    ]
+    id:5, name:'Reis-Bowl mit Garnelen', emoji:'🦐',
+    küche:'Asiatisch-inspiriert · Bowl',
+    tags:['viel-protein','wenig-kcal','schnell'], vegetarisch:false, zeit:25,
+    quelle:'https://www.instagram.com/reel/DRciDDkCIQf/', quelleText:'Instagram – Reis-Bowl',
+    er:{kcal:465,protein:40,ballaststoffe:5,fett:10,kh:48},
+    sie:{kcal:360,protein:30,ballaststoffe:4,fett:8,kh:37},
+    zutaten:[
+      {name:'Garnelen (TK, küchenfertig) 400 g',laden:'spar'},
+      {name:'Jasmin- oder Basmatireis 300 g',laden:'spar'},
+      {name:'Avocado 1 Stk.',laden:'spar'},
+      {name:'Salatgurke ½ Stk.',laden:'hofer'},
+      {name:'Rote Paprika 1 Stk.',laden:'hofer'},
+      {name:'Sojasoße 3 EL',laden:'spar'},
+      {name:'Sesamöl 1 TL',laden:'spar'},
+      {name:'Knoblauch 1 Zehe',laden:'spar'},
+      {name:'Chili-Flocken nach Wunsch',laden:'spar'},
+      {name:'Frühlingszwiebeln, Sesam, Limette',laden:'spar'},
+    ],
+    schritte:[
+      'Reis nach Packungsanweisung kochen.',
+      'Garnelen auftauen, trocken tupfen. In heißer Pfanne mit Öl und Knoblauch 2–3 Min. pro Seite anbraten bis sie rosa und leicht gebräunt sind. Mit Sojasoße und Sesamöl ablöschen.',
+      'Avocado, Gurke und Paprika in mundgerechte Stücke schneiden.',
+      'Dressing aus Sojasoße, Sesamöl, Limettensaft und Chili-Flocken mischen.',
+      'Bowl zusammenbauen: Reis, Garnelen und Gemüse anrichten. Mit Dressing, Sesam und Frühlingszwiebeln abschließen.',
+    ],
+    tipp:'TK-Garnelen in kaltem Wasser in 10 Min. auftauen. Wer es würziger mag: einen EL Sriracha ins Dressing.',
   },
   {
-    id:6, name:'Beef Goulash', emoji:'🥘', cuisine:'Austrian',
-    tags:['high-protein'], vegetarian:false,
-    time:90,
-    male:  { kcal:720, protein:52, fiber:7,  fat:30, carbs:48 },
-    female:{ kcal:560, protein:40, fiber:6,  fat:22, carbs:36 },
-    ingredients:[
-      {name:'Beef chuck 700g', store:'hofer'},{name:'Onions x3', store:'hofer'},
-      {name:'Paprika powder', store:'spar'},{name:'Potatoes 500g', store:'hofer'},
-      {name:'Sour cream', store:'spar'},{name:'Tomato paste', store:'spar'}
-    ]
+    id:6, name:'Käse-Schinken Farfalle', emoji:'🦋',
+    küche:'Österreichisch-Italienisch',
+    tags:['schnell','viel-protein'], vegetarisch:false, zeit:25,
+    quelle:'https://www.instagram.com/reel/C3azzzBtvIY/', quelleText:'Instagram – Farfalle',
+    er:{kcal:620,protein:28,ballaststoffe:3,fett:22,kh:70},
+    sie:{kcal:480,protein:22,ballaststoffe:2,fett:17,kh:54},
+    zutaten:[
+      {name:'Farfalle 400 g',laden:'spar'},
+      {name:'Kochschinken 200 g',laden:'hofer'},
+      {name:'Gouda oder Emmentaler 150 g',laden:'hofer'},
+      {name:'Schlagsahne 200 ml',laden:'hofer'},
+      {name:'Zwiebel 1 Stk.',laden:'hofer'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Butter 20 g',laden:'hofer'},
+      {name:'Petersilie frisch',laden:'spar'},
+      {name:'Muskat, Salz, Pfeffer',laden:'spar'},
+    ],
+    schritte:[
+      'Farfalle in reichlich Salzwasser al dente kochen. 1 Tasse Nudelwasser aufheben, dann abgießen.',
+      'Zwiebel fein würfeln, Knoblauch hacken. In Butter bei mittlerer Hitze 3 Min. glasig anschwitzen.',
+      'Kochschinken in Streifen schneiden, zur Pfanne geben und kurz mitbraten.',
+      'Sahne angießen, aufkochen lassen und 3–4 Min. einköcheln.',
+      'Käse grob reiben und einrühren bis er vollständig geschmolzen ist. Mit Muskat, Salz und Pfeffer abschmecken.',
+      'Farfalle in die Sauce geben, gut vermengen. Falls zu dick: etwas Nudelwasser einrühren.',
+      'Mit frisch gehackter Petersilie servieren.',
+    ],
+    tipp:'Für mehr Tiefe: einen Schuss Weißwein nach den Zwiebeln angießen und kurz einkochen lassen bevor die Sahne kommt.',
   },
   {
-    id:7, name:'Shakshuka', emoji:'🍳', cuisine:'Middle Eastern',
-    tags:['vegetarian','quick','high-protein'], vegetarian:true,
-    time:25,
-    male:  { kcal:420, protein:24, fiber:8,  fat:22, carbs:28 },
-    female:{ kcal:340, protein:19, fiber:7,  fat:17, carbs:22 },
-    ingredients:[
-      {name:'Eggs x6', store:'hofer'},{name:'Crushed tomatoes 2 cans', store:'spar'},
-      {name:'Red pepper x2', store:'spar'},{name:'Chili flakes', store:'spar'},
-      {name:'Cumin + paprika', store:'spar'},{name:'Feta cheese', store:'hofer'}
-    ]
+    id:7, name:'Cremige Lachspfanne', emoji:'🍳',
+    küche:'Mediterran · Schnellküche',
+    tags:['schnell','viel-protein','wenig-kcal'], vegetarisch:false, zeit:20,
+    quelle:null, quelleText:null,
+    er:{kcal:480,protein:42,ballaststoffe:4,fett:28,kh:12},
+    sie:{kcal:370,protein:33,ballaststoffe:3,fett:21,kh:9},
+    zutaten:[
+      {name:'Lachsfilet 2 × 180 g',laden:'spar'},
+      {name:'Babyspinat 200 g',laden:'spar'},
+      {name:'Schlagsahne 150 ml',laden:'hofer'},
+      {name:'Kirschtomaten 200 g',laden:'spar'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Zitrone 1 Stk.',laden:'spar'},
+      {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},
+      {name:'Parmesan nach Belieben',laden:'spar'},
+    ],
+    schritte:[
+      'Lachs salzen und pfeffern. In einer Pfanne mit Olivenöl je 3 Min. pro Seite anbraten. Herausnehmen und warm halten.',
+      'Im gleichen Bratfett Knoblauch (gehackt) 30 Sek. anschwitzen. Kirschtomaten halbiert dazugeben und 2 Min. bei hoher Hitze anbraten.',
+      'Sahne angießen, aufkochen und 2 Min. einköcheln. Spinat einrühren und zusammenfallen lassen.',
+      'Zitronensaft dazupressen, abschmecken. Lachs wieder einlegen und kurz erwärmen.',
+      'Mit Parmesan bestreut servieren. Dazu Baguette oder Naturreis.',
+    ],
+    tipp:'Tiefkühl-Lachs funktioniert hier genauso gut wie frischer – vollständig auftauen und gut trocken tupfen.',
   },
   {
-    id:8, name:'Grilled Trout & Rice', emoji:'🐠', cuisine:'Austrian',
-    tags:['high-protein','low-kcal'], vegetarian:false,
-    time:30,
-    male:  { kcal:490, protein:44, fiber:3,  fat:14, carbs:42 },
-    female:{ kcal:380, protein:35, fiber:2,  fat:10, carbs:32 },
-    ingredients:[
-      {name:'Trout 2 whole', store:'spar'},{name:'Basmati rice 300g', store:'hofer'},
-      {name:'Lemon x2', store:'spar'},{name:'Fresh herbs', store:'spar'},
-      {name:'Garlic', store:'hofer'},{name:'Butter', store:'hofer'}
-    ]
+    id:8, name:'Spinat-Ricotta Gnocchi', emoji:'🌿',
+    küche:'Italienisch · Vegetarisch',
+    tags:['schnell','vegetarisch','viel-ballaststoffe'], vegetarisch:true, zeit:20,
+    quelle:null, quelleText:null,
+    er:{kcal:510,protein:22,ballaststoffe:8,fett:18,kh:62},
+    sie:{kcal:395,protein:17,ballaststoffe:6,fett:14,kh:48},
+    zutaten:[
+      {name:'Gnocchi (Kühlregal) 500 g',laden:'spar'},
+      {name:'Ricotta 250 g',laden:'spar'},
+      {name:'Tiefkühlspinat gehackt 300 g',laden:'hofer'},
+      {name:'Parmesan gerieben 60 g',laden:'spar'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Butter 30 g',laden:'hofer'},
+      {name:'Muskat, Salz, Pfeffer',laden:'spar'},
+    ],
+    schritte:[
+      'Spinat auftauen und gut ausdrücken – am besten im Küchentuch.',
+      'Butter in einer großen Pfanne schmelzen, Knoblauch kurz anschwitzen.',
+      'Spinat dazugeben, erhitzen, mit Muskat, Salz und Pfeffer würzen.',
+      'Ricotta einrühren, Hitze reduzieren. Ca. 100 ml Nudelwasser dazugeben für eine cremigere Sauce.',
+      'Gnocchi in Salzwasser kochen bis sie aufschwimmen. Abgießen, in die Pfanne geben und gut vermengen.',
+      'Mit Parmesan bestreut servieren.',
+    ],
+    tipp:'Wer die Gnocchi knusprig mag: nach dem Kochen kurz in Butter in einer zweiten Pfanne goldbraun anbraten.',
   },
   {
-    id:9, name:'Turkey Meatballs & Sauce', emoji:'🍖', cuisine:'Italian',
-    tags:['high-protein','low-kcal'], vegetarian:false,
-    time:40,
-    male:  { kcal:560, protein:50, fiber:5,  fat:18, carbs:38 },
-    female:{ kcal:430, protein:39, fiber:4,  fat:13, carbs:28 },
-    ingredients:[
-      {name:'Turkey mince 600g', store:'hofer'},{name:'Breadcrumbs', store:'spar'},
-      {name:'Eggs x2', store:'hofer'},{name:'Tomato sauce', store:'spar'},
-      {name:'Pasta 300g', store:'spar'},{name:'Parmesan', store:'spar'}
-    ]
+    id:9, name:'Hähnchen-Paprika Pfanne', emoji:'🫑',
+    küche:'Mediterran · Schnellküche',
+    tags:['schnell','viel-protein','wenig-kcal'], vegetarisch:false, zeit:25,
+    quelle:null, quelleText:null,
+    er:{kcal:420,protein:48,ballaststoffe:6,fett:10,kh:22},
+    sie:{kcal:325,protein:37,ballaststoffe:5,fett:8,kh:17},
+    zutaten:[
+      {name:'Hähnchenbrustfilet 600 g',laden:'hofer'},
+      {name:'Paprika 3 Stk. (bunt)',laden:'spar'},
+      {name:'Zwiebel 1 Stk.',laden:'hofer'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Tomatenstücke (Dose) 400 g',laden:'spar'},
+      {name:'Paprikapulver edelsüß + geräuchert',laden:'spar'},
+      {name:'Kreuzkümmel gemahlen',laden:'spar'},
+      {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},
+    ],
+    schritte:[
+      'Hähnchenfilet in mundgerechte Stücke schneiden, salzen und pfeffern.',
+      'In einer großen Pfanne mit Olivenöl bei hoher Hitze scharf anbraten bis goldbraun. Herausnehmen.',
+      'Zwiebel und Paprika in Streifen schneiden. Im gleichen Öl 3–4 Min. anbraten.',
+      'Knoblauch und Gewürze dazugeben, kurz rösten.',
+      'Tomaten angießen, aufkochen. Hähnchen zurück in die Pfanne geben. 10 Min. zugedeckt garen. Abschmecken.',
+      'Mit Reis, Brot oder Couscous servieren.',
+    ],
+    tipp:'Ein Klecks Schmand oder griechischer Joghurt zum Servieren macht die Sauce besonders cremig.',
   },
   {
-    id:10, name:'Chickpea Curry', emoji:'🍛', cuisine:'Indian',
-    tags:['vegetarian','high-fiber'], vegetarian:true,
-    time:35,
-    male:  { kcal:500, protein:20, fiber:16, fat:18, carbs:62 },
-    female:{ kcal:390, protein:15, fiber:13, fat:13, carbs:48 },
-    ingredients:[
-      {name:'Chickpeas 800g cans', store:'hofer'},{name:'Coconut milk', store:'spar'},
-      {name:'Curry paste', store:'spar'},{name:'Basmati rice 300g', store:'hofer'},
-      {name:'Spinach 200g', store:'spar'},{name:'Ginger + garlic', store:'hofer'}
-    ]
+    id:10, name:'Garnelen-Tomaten Pasta', emoji:'🍤',
+    küche:'Italienisch · Schnellküche',
+    tags:['schnell','viel-protein'], vegetarisch:false, zeit:20,
+    quelle:null, quelleText:null,
+    er:{kcal:540,protein:38,ballaststoffe:5,fett:12,kh:66},
+    sie:{kcal:415,protein:29,ballaststoffe:4,fett:9,kh:51},
+    zutaten:[
+      {name:'Spaghetti oder Linguine 400 g',laden:'spar'},
+      {name:'Garnelen (TK, küchenfertig) 400 g',laden:'spar'},
+      {name:'Kirschtomaten 300 g',laden:'spar'},
+      {name:'Knoblauch 3 Zehen',laden:'spar'},
+      {name:'Chili-Flocken nach Geschmack',laden:'spar'},
+      {name:'Olivenöl extra vergine 3 EL',laden:'spar'},
+      {name:'Petersilie frisch',laden:'hofer'},
+      {name:'Zitrone 1 Stk.',laden:'hofer'},
+      {name:'Salz, Pfeffer',laden:'spar'},
+    ],
+    schritte:[
+      'Pasta in reichlich Salzwasser al dente kochen. 1 Tasse Nudelwasser aufheben.',
+      'Knoblauch in Scheiben in Olivenöl bei mittlerer Hitze goldgelb anschwitzen. Chili-Flocken dazu.',
+      'Kirschtomaten halbieren, bei hoher Hitze 3 Min. anbraten bis sie weich werden.',
+      'Garnelen (aufgetaut, trocken getupft) dazugeben und 2 Min. pro Seite braten bis sie rosa sind.',
+      'Zitronensaft und etwas Nudelwasser angießen. Pasta dazu und gut schwenken.',
+      'Mit Petersilie und einem Schuss Olivenöl servieren.',
+    ],
+    tipp:'Kein Parmesan zu Meeresfrüchten – das ist in Italien eine eiserne Regel! Zitrone ist hier die wichtigste Zutat.',
   },
   {
-    id:11, name:'Schnitzel & Salad', emoji:'🥩', cuisine:'Austrian',
-    tags:['high-protein','quick'], vegetarian:false,
-    time:25,
-    male:  { kcal:650, protein:46, fiber:4,  fat:32, carbs:44 },
-    female:{ kcal:490, protein:35, fiber:3,  fat:24, carbs:32 },
-    ingredients:[
-      {name:'Pork schnitzel 4 pieces', store:'hofer'},{name:'Breadcrumbs', store:'spar'},
-      {name:'Eggs x2', store:'hofer'},{name:'Flour', store:'spar'},
-      {name:'Mixed salad leaves', store:'spar'},{name:'Lemon x2', store:'spar'}
-    ]
+    id:11, name:'Zucchini-Hack-Pfanne', emoji:'🥒',
+    küche:'Mediterran · Low-Carb Option',
+    tags:['schnell','viel-protein','viel-ballaststoffe'], vegetarisch:false, zeit:25,
+    quelle:null, quelleText:null,
+    er:{kcal:490,protein:38,ballaststoffe:7,fett:26,kh:18},
+    sie:{kcal:375,protein:29,ballaststoffe:5,fett:19,kh:14},
+    zutaten:[
+      {name:'Gemischtes Hackfleisch 500 g',laden:'hofer'},
+      {name:'Zucchini 3 Stk. (mittelgroß)',laden:'hofer'},
+      {name:'Zwiebel 1 Stk.',laden:'hofer'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Tomatenstücke (Dose) 400 g',laden:'spar'},
+      {name:'Reibekäse 100 g',laden:'hofer'},
+      {name:'Oregano, Basilikum, Paprikapulver',laden:'spar'},
+      {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},
+    ],
+    schritte:[
+      'Zwiebel würfeln, Knoblauch hacken. In Öl anschwitzen.',
+      'Hackfleisch dazugeben und krümelig anbraten bis es gut gebräunt ist. Mit Salz, Pfeffer und Paprika würzen.',
+      'Zucchini in Halbmonde schneiden und dazugeben. 5 Min. mitbraten.',
+      'Tomaten angießen, Kräuter einrühren. 10 Min. köcheln lassen.',
+      'Käse darüber streuen, Deckel drauf und schmelzen lassen. Sofort servieren.',
+    ],
+    tipp:'Mit Fladenbrot ein echtes Comfort Food. Für Low-Carb einfach mehr Zucchini nehmen und Brot weglassen.',
   },
   {
-    id:12, name:'Zucchini Fritters', emoji:'🥒', cuisine:'Mediterranean',
-    tags:['vegetarian','low-kcal','quick','high-fiber'], vegetarian:true,
-    time:20,
-    male:  { kcal:340, protein:16, fiber:9,  fat:14, carbs:32 },
-    female:{ kcal:265, protein:12, fiber:7,  fat:10, carbs:24 },
-    ingredients:[
-      {name:'Zucchini x4', store:'hofer'},{name:'Eggs x3', store:'hofer'},
-      {name:'Feta 150g', store:'spar'},{name:'Flour', store:'spar'},
-      {name:'Dill', store:'spar'},{name:'Greek yoghurt', store:'spar'}
-    ]
-  }
+    id:12, name:'Linsen-Tomaten-Suppe', emoji:'🍲',
+    küche:'Orientalisch · Vegan',
+    tags:['schnell','vegetarisch','wenig-kcal','viel-ballaststoffe'], vegetarisch:true, zeit:30,
+    quelle:null, quelleText:null,
+    er:{kcal:380,protein:22,ballaststoffe:16,fett:6,kh:54},
+    sie:{kcal:295,protein:17,ballaststoffe:13,fett:4,kh:42},
+    zutaten:[
+      {name:'Rote Linsen 300 g',laden:'hofer'},
+      {name:'Tomatenstücke (Dose) 400 g',laden:'spar'},
+      {name:'Karotten 2 Stk.',laden:'hofer'},
+      {name:'Zwiebel 1 Stk.',laden:'hofer'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Gemüsebrühe 1 Liter',laden:'spar'},
+      {name:'Kreuzkümmel 1 TL, Kurkuma ½ TL, Paprika 1 TL',laden:'spar'},
+      {name:'Zitrone 1 Stk.',laden:'spar'},
+      {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},
+      {name:'Petersilie oder Koriander',laden:'hofer'},
+    ],
+    schritte:[
+      'Zwiebel würfeln und in Olivenöl bei mittlerer Hitze 4 Min. glasig anschwitzen.',
+      'Knoblauch, Karotten (gewürfelt) und alle Gewürze dazugeben, 2 Min. rösten bis es duftet.',
+      'Linsen (gewaschen), Tomaten und Brühe dazugeben. Aufkochen.',
+      'Bei mittlerer Hitze 20 Min. köcheln lassen bis die Linsen weich sind.',
+      'Mit einem Stabmixer die Hälfte pürieren – je nach gewünschter Konsistenz mehr oder weniger.',
+      'Zitronensaft einrühren, abschmecken. Mit frischen Kräutern und Olivenöl servieren.',
+    ],
+    tipp:'Rote Linsen müssen nicht eingeweicht werden – direkt aus der Packung. Mit Fladenbrot servieren.',
+  },
 ];
 
-// ═══════════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════════
-let persona = 'both';
-let activeFilter = 'all';
-let currentMeal = null;
-let groceryIngredients = {};
-let weekPlan = {};
-const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+// STATE
+let persona='beide', aktiverFilter='alle', aktuell=null;
+let einkaufsListe={}, wochenplan={};
+const TAGE=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+let winkel=0, drehtSich=false;
 
-// ═══════════════════════════════════════════════════════
-//  HELPERS
-// ═══════════════════════════════════════════════════════
-function getNutrition(meal) {
-  if (persona === 'male') return meal.male;
-  if (persona === 'female') return meal.female;
-  // both: average
-  return {
-    kcal: Math.round((meal.male.kcal + meal.female.kcal) / 2),
-    protein: Math.round((meal.male.protein + meal.female.protein) / 2),
-    fiber: Math.round((meal.male.fiber + meal.female.fiber) / 2),
-    fat: Math.round((meal.male.fat + meal.female.fat) / 2),
-    carbs: Math.round((meal.male.carbs + meal.female.carbs) / 2),
-  };
+const FARBEN=['#2A5438','#B84A2A','#C99830','#3D7A52','#7A2A10','#4A8C6A','#D96040','#9A7820','#1A3822','#8A3020','#5AAE82','#C4882A'];
+const TAG_META={
+  'viel-protein':       {css:'tag-high-prot',label:'💪 Viel Protein'},
+  'wenig-kcal':         {css:'tag-low-kcal', label:'🥗 Wenig Kalorien'},
+  'viel-ballaststoffe': {css:'tag-high-fib', label:'🌾 Viel Ballaststoffe'},
+  'schnell':            {css:'tag-schnell',  label:'⚡ Unter 30 Min.'},
+  'vegetarisch':        {css:'tag-veg',      label:'🌿 Vegetarisch'},
+};
+
+function naehrwerte(r){
+  if(persona==='er') return r.er;
+  if(persona==='sie') return r.sie;
+  return {kcal:Math.round((r.er.kcal+r.sie.kcal)/2),protein:Math.round((r.er.protein+r.sie.protein)/2),ballaststoffe:Math.round((r.er.ballaststoffe+r.sie.ballaststoffe)/2),fett:Math.round((r.er.fett+r.sie.fett)/2),kh:Math.round((r.er.kh+r.sie.kh)/2)};
+}
+function gefilterteRezepte(){
+  if(aktiverFilter==='alle') return REZEPTE;
+  if(aktiverFilter==='vegetarisch') return REZEPTE.filter(r=>r.vegetarisch);
+  if(aktiverFilter==='schnell') return REZEPTE.filter(r=>r.zeit<30);
+  return REZEPTE.filter(r=>r.tags.includes(aktiverFilter));
+}
+function setPersona(p){
+  persona=p;
+  ['beide','er','sie'].forEach(x=>document.getElementById('btn-'+x).classList.toggle('active',x===p));
+  radZeichnen(); rezeptGridZeigen(); if(aktuell) ergebnisZeigen(aktuell);
+}
+function filterWechseln(el,f){
+  document.querySelectorAll('.fc').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on'); aktiverFilter=f; radZeichnen(); rezeptGridZeigen();
 }
 
-function getFilteredMeals() {
-  if (activeFilter === 'all') return MEALS;
-  if (activeFilter === 'vegetarian') return MEALS.filter(m => m.vegetarian);
-  if (activeFilter === 'quick') return MEALS.filter(m => m.time <= 30);
-  return MEALS.filter(m => m.tags.includes(activeFilter));
-}
-
-function setPersona(p) {
-  persona = p;
-  ['both','male','female'].forEach(x => document.getElementById('btn-'+x).classList.remove('active'));
-  document.getElementById('btn-'+p).classList.add('active');
-  drawWheel();
-  renderMealGrid();
-  if (currentMeal) showResult(currentMeal);
-}
-
-function toggleFilter(el, filter) {
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  activeFilter = filter;
-  drawWheel();
-  renderMealGrid();
-}
-
-// ═══════════════════════════════════════════════════════
-//  WHEEL
-// ═══════════════════════════════════════════════════════
-const WHEEL_COLORS = [
-  '#2D5A3D','#C4522A','#D4A843','#4A8C63','#8B3A1A',
-  '#3D7A55','#E8734A','#B8922E','#1E3D2A','#A84828',
-  '#5A9E72','#D4943E'
-];
-
-let wheelAngle = 0;
-let spinning = false;
-
-function drawWheel() {
-  const meals = getFilteredMeals();
-  const canvas = document.getElementById('wheel-canvas');
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const cx = W/2, cy = H/2, r = W/2 - 10;
-  const slice = (2 * Math.PI) / meals.length;
-
-  ctx.clearRect(0, 0, W, H);
-
-  meals.forEach((meal, i) => {
-    const start = wheelAngle + i * slice;
-    const end = start + slice;
-
-    // Slice
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r, start, end);
-    ctx.closePath();
-    ctx.fillStyle = WHEEL_COLORS[i % WHEEL_COLORS.length];
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Emoji + Text
-    const mid = start + slice / 2;
-    const textR = r * 0.65;
-    const tx = cx + Math.cos(mid) * textR;
-    const ty = cy + Math.sin(mid) * textR;
-
-    ctx.save();
-    ctx.translate(tx, ty);
-    ctx.rotate(mid + Math.PI / 2);
-
-    // emoji
-    ctx.font = `${Math.min(22, 280 / meals.length)}px serif`;
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'white';
-    ctx.fillText(meal.emoji, 0, -8);
-
-    // name
-    const fontSize = Math.min(11, 220 / meals.length);
-    ctx.font = `600 ${fontSize}px DM Sans, sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    const shortName = meal.name.length > 12 ? meal.name.slice(0,11) + '…' : meal.name;
-    ctx.fillText(shortName, 0, 8);
-    ctx.restore();
+function radZeichnen(){
+  const rez=gefilterteRezepte();
+  const cv=document.getElementById('wheel'), ctx=cv.getContext('2d');
+  const W=cv.width, cx=W/2, r=W/2-10, s=2*Math.PI/rez.length;
+  ctx.clearRect(0,0,W,W);
+  rez.forEach((item,i)=>{
+    const a=winkel+i*s, e=a+s;
+    ctx.beginPath(); ctx.moveTo(cx,cx); ctx.arc(cx,cx,r,a,e); ctx.closePath();
+    ctx.fillStyle=FARBEN[i%FARBEN.length]; ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1.5; ctx.stroke();
+    const m=a+s/2, tr=r*.64, tx=cx+Math.cos(m)*tr, ty=cx+Math.sin(m)*tr;
+    ctx.save(); ctx.translate(tx,ty); ctx.rotate(m+Math.PI/2);
+    ctx.font=`${Math.min(22,280/rez.length)}px serif`; ctx.textAlign='center'; ctx.fillStyle='white'; ctx.fillText(item.emoji,0,-7);
+    ctx.font=`600 ${Math.min(11,210/rez.length)}px DM Sans,sans-serif`; ctx.fillStyle='rgba(255,255,255,.9)';
+    ctx.fillText(item.name.length>12?item.name.slice(0,11)+'…':item.name,0,8); ctx.restore();
   });
-
-  // Center circle
-  ctx.beginPath();
-  ctx.arc(cx, cy, 26, 0, 2 * Math.PI);
-  ctx.fillStyle = '#FAF6EF';
-  ctx.fill();
-  ctx.strokeStyle = '#E8DCC8';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  ctx.font = '18px serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('🍽️', cx, cy);
+  ctx.beginPath(); ctx.arc(cx,cx,28,0,2*Math.PI); ctx.fillStyle='#FAF5EC'; ctx.fill();
+  ctx.strokeStyle='#DDD0B8'; ctx.lineWidth=3; ctx.stroke();
+  ctx.font='18px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🍽️',cx,cx);
 }
 
-function spin() {
-  if (spinning) return;
-  spinning = true;
-  document.getElementById('spinBtn').disabled = true;
-
-  const meals = getFilteredMeals();
-  const extraSpins = 5 + Math.random() * 5;
-  const sliceAngle = (2 * Math.PI) / meals.length;
-  const targetIndex = Math.floor(Math.random() * meals.length);
-  // aim so the pointer (top = -PI/2) lands in the middle of targetIndex's slice
-  const targetAngle = -Math.PI/2 - (targetIndex * sliceAngle + sliceAngle/2);
-  const totalAngle = extraSpins * 2 * Math.PI + (targetAngle - wheelAngle % (2 * Math.PI));
-
-  const duration = 4000;
-  const start = performance.now();
-  const startAngle = wheelAngle;
-
-  function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
-
-  function animate(now) {
-    const elapsed = now - start;
-    const t = Math.min(elapsed / duration, 1);
-    wheelAngle = startAngle + totalAngle * easeOut(t);
-    drawWheel();
-
-    if (t < 1) {
-      requestAnimationFrame(animate);
-    } else {
-      spinning = false;
-      document.getElementById('spinBtn').disabled = false;
-      currentMeal = meals[targetIndex];
-      showResult(currentMeal);
-    }
-  }
-
-  requestAnimationFrame(animate);
+function drehen(){
+  if(drehtSich) return; drehtSich=true; document.getElementById('spinBtn').disabled=true;
+  const rez=gefilterteRezepte(), zi=Math.floor(Math.random()*rez.length);
+  const sw=2*Math.PI/rez.length, zw=-Math.PI/2-(zi*sw+sw/2);
+  const g=(5+Math.random()*5)*2*Math.PI+(zw-winkel%(2*Math.PI));
+  const d=4200, t0=performance.now(), w0=winkel;
+  const ease=t=>1-Math.pow(1-t,4);
+  (function f(now){
+    const t=Math.min((now-t0)/d,1); winkel=w0+g*ease(t); radZeichnen();
+    if(t<1){requestAnimationFrame(f);return;}
+    drehtSich=false; document.getElementById('spinBtn').disabled=false;
+    aktuell=rez[zi]; ergebnisZeigen(aktuell);
+  })(t0);
 }
 
-// ═══════════════════════════════════════════════════════
-//  RESULT CARD
-// ═══════════════════════════════════════════════════════
-function showResult(meal) {
-  const n = getNutrition(meal);
-  const card = document.getElementById('resultCard');
-  card.classList.remove('visible');
-  void card.offsetWidth;
-  card.classList.add('visible');
-
-  document.getElementById('resultEmoji').textContent = meal.emoji;
-  document.getElementById('resultName').textContent = meal.name;
-
-  const kcalGoal = persona === 'female' ? 600 : persona === 'male' ? 800 : 700;
-  const pct = Math.min(Math.round((n.kcal / kcalGoal) * 100), 100);
-
-  document.getElementById('kcalBar').style.width = pct + '%';
-  document.getElementById('kcalBar').style.background = pct > 80 ? '#C4522A' : '#4A8C63';
-  document.getElementById('kcalPercent').textContent = `${pct}% of dinner kcal target`;
-  document.getElementById('resultKcalNote').innerHTML = `⏱️ ${meal.time} min<br>🌍 ${meal.cuisine}`;
-
-  // Tags
-  const tagEl = document.getElementById('resultTags');
-  tagEl.innerHTML = '';
-  meal.tags.forEach(t => {
-    const cls = t.includes('high') ? 'high' : t.includes('low') ? 'low' : '';
-    tagEl.innerHTML += `<span class="tag ${cls}">${tagLabel(t)}</span>`;
-  });
-  if (meal.vegetarian) tagEl.innerHTML += `<span class="tag low">🌿 Vegetarian</span>`;
-
-  // Nutrition
-  document.getElementById('nutritionGrid').innerHTML = `
+function ergebnisZeigen(rez){
+  const n=naehrwerte(rez);
+  const card=document.getElementById('resultCard');
+  card.classList.remove('show'); void card.offsetWidth; card.classList.add('show');
+  document.getElementById('rEmoji').textContent=rez.emoji;
+  document.getElementById('rName').textContent=rez.name;
+  document.getElementById('rCuisine').textContent=rez.küche;
+  document.getElementById('rTime').textContent=`⏱️ ${rez.zeit} Min.`;
+  const te=document.getElementById('rTags'); te.innerHTML='';
+  rez.tags.forEach(t=>{const m=TAG_META[t]||{css:'',label:t};te.innerHTML+=`<span class="tag ${m.css}">${m.label}</span>`;});
+  if(rez.vegetarisch) te.innerHTML+=`<span class="tag tag-veg">🌿 Vegetarisch</span>`;
+  document.getElementById('rNutri').innerHTML=`
     <div class="nutri-box"><div class="nutri-val" style="color:var(--rust)">${n.kcal}</div><div class="nutri-label">kcal</div></div>
-    <div class="nutri-box"><div class="nutri-val" style="color:#3553C0">${n.protein}g</div><div class="nutri-label">Protein</div></div>
-    <div class="nutri-box"><div class="nutri-val" style="color:var(--forest)">${n.fiber}g</div><div class="nutri-label">Fiber</div></div>
-    <div class="nutri-box"><div class="nutri-val" style="color:var(--gold)">${n.carbs}g</div><div class="nutri-label">Carbs</div></div>
-  `;
+    <div class="nutri-box"><div class="nutri-val" style="color:#2B4BA0">${n.protein}g</div><div class="nutri-label">Protein</div></div>
+    <div class="nutri-box"><div class="nutri-val" style="color:var(--forest)">${n.ballaststoffe}g</div><div class="nutri-label">Ballaststoffe</div></div>
+    <div class="nutri-box"><div class="nutri-val" style="color:var(--gold)">${n.kh}g</div><div class="nutri-label">Kohlenhydrate</div></div>`;
+  const ziel=persona==='sie'?600:persona==='er'?800:700, pct=Math.min(Math.round(n.kcal/ziel*100),100);
+  const bar=document.getElementById('kcalBar');
+  bar.style.width=pct+'%'; bar.style.background=pct>85?'var(--rust)':pct>60?'var(--gold)':'var(--forest-light)';
+  document.getElementById('kcalPct').textContent=`${pct}% des Abendessen-Kalorienziels`;
+  const src=document.getElementById('rSource');
+  if(rez.quelle){src.href=rez.quelle;src.textContent=`🔗 ${rez.quelleText}`;src.style.display='inline-flex';}
+  else src.style.display='none';
+  card.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-function tagLabel(t) {
-  const map = { 'high-protein':'💪 High Protein','low-kcal':'🥗 Low Cal','high-fiber':'🌾 High Fiber','quick':'⚡ Quick' };
-  return map[t] || t;
+function rezeptOeffnen(rez){
+  if(!rez) return;
+  const n=naehrwerte(rez);
+  const pl=persona==='er'?'♂ Er':persona==='sie'?'♀ Sie':'👫 Beide (Ø)';
+  document.getElementById('rmTitle').textContent=rez.emoji+' '+rez.name;
+  document.getElementById('rezeptModalInhalt').innerHTML=`
+    <div class="rezept-hero">
+      <div class="rezept-emoji-big">${rez.emoji}</div>
+      <div class="rezept-hero-meta">
+        <div class="rezept-hero-name">${rez.name}</div>
+        <div class="rezept-hero-sub">${rez.küche}</div>
+        <div class="rezept-stats">
+          <span class="rstat">⏱️ ${rez.zeit} Min.</span>
+          <span class="rstat">👥 2 Personen</span>
+          ${rez.vegetarisch?'<span class="rstat">🌿 Vegetarisch</span>':''}
+          ${rez.quelle?`<a href="${rez.quelle}" target="_blank" rel="noopener" class="rstat" style="color:var(--forest-light);text-decoration:none;">🔗 Originalrezept</a>`:''}
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:.75rem;color:var(--mid);margin-bottom:.5rem;">Nährwerte pro Portion · ${pl}</div>
+      <div class="rezept-nutri-grid">
+        <div class="rnutri"><div class="rnutri-val" style="color:var(--rust)">${n.kcal}</div><div class="rnutri-lbl">kcal</div></div>
+        <div class="rnutri"><div class="rnutri-val" style="color:#2B4BA0">${n.protein}g</div><div class="rnutri-lbl">Protein</div></div>
+        <div class="rnutri"><div class="rnutri-val" style="color:var(--forest)">${n.ballaststoffe}g</div><div class="rnutri-lbl">Ballaststoffe</div></div>
+        <div class="rnutri"><div class="rnutri-val" style="color:var(--gold)">${n.kh}g</div><div class="rnutri-lbl">Kohlenhydrate</div></div>
+        <div class="rnutri"><div class="rnutri-val" style="color:var(--mid)">${n.fett}g</div><div class="rnutri-lbl">Fett</div></div>
+      </div>
+    </div>
+    <div class="rezept-section">
+      <div class="rezept-section-title">🧺 Zutaten für 2 Personen</div>
+      <ul class="zutaten-list">${rez.zutaten.map(z=>`<li><span class="z-dot"></span><span>${z.name}</span><span class="z-store ${z.laden==='spar'?'z-spar':'z-hofer'}">${z.laden==='spar'?'SPAR':'HOFER'}</span></li>`).join('')}</ul>
+    </div>
+    <div class="rezept-section">
+      <div class="rezept-section-title">👨‍🍳 Zubereitung</div>
+      <ol class="schritte-list">${rez.schritte.map(s=>`<li>${s}</li>`).join('')}</ol>
+    </div>
+    ${rez.tipp?`<div class="tipp-box"><strong>💡 Tipp:</strong> ${rez.tipp}</div>`:''}
+    <div class="modal-actions">
+      <button class="btn btn-fill" onclick="zurEinkaufsliste(REZEPTE.find(r=>r.id===${rez.id}));rezeptSchliessen()">🛒 Zur Einkaufsliste</button>
+      <button class="btn btn-gold" onclick="rezeptSchliessen()">✓ Schließen</button>
+    </div>`;
+  document.getElementById('overlayRezept').classList.add('open');
 }
+function rezeptSchliessen(){ document.getElementById('overlayRezept').classList.remove('open'); }
 
-// ═══════════════════════════════════════════════════════
-//  GROCERY LIST
-// ═══════════════════════════════════════════════════════
-function addToGrocery(meal) {
-  if (!meal) return;
-  meal.ingredients.forEach(ing => {
-    groceryIngredients[ing.name] = { store: ing.store, checked: false };
-  });
-  renderGrocery();
+function zurEinkaufsliste(rez){
+  if(!rez) return;
+  rez.zutaten.forEach(z=>{einkaufsListe[z.name]={laden:z.laden,abgehakt:false};});
+  listeZeigen();
 }
-
-function renderGrocery() {
-  const items = Object.entries(groceryIngredients);
-  const container = document.getElementById('groceryList');
-  const section = document.getElementById('groceryItemsSection');
-
-  if (items.length === 0) {
-    container.innerHTML = '<div class="empty-state">Spin the wheel or plan your week to auto-generate your shopping list 🎯</div>';
-    section.style.display = 'none';
-    return;
-  }
-
-  container.innerHTML = '';
-  section.style.display = 'block';
-
-  const byStore = { spar: [], hofer: [] };
-  items.forEach(([name, data]) => byStore[data.store].push({ name, ...data }));
-
-  const groceryEl = document.getElementById('groceryItems');
-  groceryEl.innerHTML = '';
-
-  ['spar','hofer'].forEach(store => {
-    if (byStore[store].length === 0) return;
-    groceryEl.innerHTML += `<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--mid);letter-spacing:1px;margin:0.6rem 0 0.3rem;">${store === 'spar' ? '🟢 SPAR' : '🟠 HOFER'}</div>`;
-    byStore[store].forEach(item => {
-      const id = 'g-' + item.name.replace(/\s+/g,'_');
-      groceryEl.innerHTML += `
-        <div class="grocery-item ${item.checked ? 'checked' : ''}" id="row-${id}">
-          <input type="checkbox" id="${id}" ${item.checked ? 'checked' : ''} onchange="toggleItem('${item.name}')"/>
-          <label for="${id}">${item.name}</label>
-        </div>`;
+function listeZeigen(){
+  const e=Object.entries(einkaufsListe), cont=document.getElementById('listeContainer'), exp=document.getElementById('listeExport');
+  if(!e.length){cont.innerHTML='<div class="grocery-empty">Dreh das Rad oder erstelle einen Wochenplan – deine Einkaufsliste wird automatisch befüllt 🎯</div>';exp.style.display='none';return;}
+  exp.style.display='block';
+  const byL={spar:[],hofer:[]};
+  e.forEach(([name,d])=>byL[d.laden].push({name,...d}));
+  cont.innerHTML='';
+  ['spar','hofer'].forEach(l=>{
+    if(!byL[l].length) return;
+    cont.innerHTML+=`<div class="store-section-title">${l==='spar'?'🟢 SPAR':'🟠 HOFER'}</div>`;
+    byL[l].forEach(item=>{
+      const id='g-'+item.name.replace(/[^a-z0-9]/gi,'_');
+      cont.innerHTML+=`<div class="grocery-item ${item.abgehakt?'done':''}" id="row-${id}"><input type="checkbox" id="${id}" ${item.abgehakt?'checked':''} onchange="toggle_('${item.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" /><label for="${id}">${item.name}</label></div>`;
     });
   });
 }
-
-function toggleItem(name) {
-  if (groceryIngredients[name]) {
-    groceryIngredients[name].checked = !groceryIngredients[name].checked;
-    renderGrocery();
-  }
-}
-
-function clearGrocery() {
-  groceryIngredients = {};
-  renderGrocery();
-}
-
-function exportGrocery() {
-  const lines = ['🛒 GROCERY LIST — DinnerSpin\n'];
-  ['spar','hofer'].forEach(store => {
-    const items = Object.entries(groceryIngredients).filter(([,d]) => d.store === store);
-    if (items.length) {
-      lines.push(`\n${store.toUpperCase()}:`);
-      items.forEach(([name]) => lines.push(`  ☐ ${name}`));
-    }
+function toggle_(name){ if(einkaufsListe[name]!==undefined){einkaufsListe[name].abgehakt=!einkaufsListe[name].abgehakt;listeZeigen();} }
+function listeLeeren(){ einkaufsListe={}; listeZeigen(); }
+function exportieren(){
+  const z=['🛒 EINKAUFSLISTE – DinnerSpin\n'];
+  ['spar','hofer'].forEach(l=>{
+    const items=Object.entries(einkaufsListe).filter(([,d])=>d.laden===l);
+    if(!items.length) return; z.push(`\n${l==='spar'?'🟢 SPAR':'🟠 HOFER'}:`);
+    items.forEach(([name])=>z.push(`  ☐  ${name}`));
   });
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'grocery-list.txt';
-  a.click();
+  Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([z.join('\n')],{type:'text/plain'})),download:'einkaufsliste.txt'}).click();
 }
 
-// ═══════════════════════════════════════════════════════
-//  WEEK PLAN MODAL
-// ═══════════════════════════════════════════════════════
-function openModal() {
-  if (Object.keys(weekPlan).length === 0) reshuffleAll();
-  renderWeekPlan();
-  document.getElementById('modalOverlay').classList.add('open');
-}
-
-function closeModal() {
-  document.getElementById('modalOverlay').classList.remove('open');
-}
-
-function closeModalOutside(e) {
-  if (e.target === document.getElementById('modalOverlay')) closeModal();
-}
-
-function reshuffleAll() {
-  const meals = getFilteredMeals();
-  DAYS.forEach((day, i) => {
-    weekPlan[day] = meals[i % meals.length];
-  });
-  // Shuffle
-  DAYS.forEach(day => {
-    const idx = Math.floor(Math.random() * meals.length);
-    weekPlan[day] = meals[idx];
+function alleMischeln(){ const r=gefilterteRezepte(); TAGE.forEach(t=>{wochenplan[t]=r[Math.floor(Math.random()*r.length)];}); wocheZeigen(); }
+function wocheOeffnen(){ if(!Object.keys(wochenplan).length)alleMischeln();else wocheZeigen(); document.getElementById('overlayWoche').classList.add('open'); }
+function wocheSchliessen(){ document.getElementById('overlayWoche').classList.remove('open'); }
+function overlayZu(e,id){ if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
+function tagNeuMischen(tag){ const r=gefilterteRezepte(); wochenplan[tag]=r[Math.floor(Math.random()*r.length)]; wocheZeigen(); }
+function wocheZeigen(){
+  const cont=document.getElementById('wocheRows'); cont.innerHTML='';
+  TAGE.forEach(t=>{
+    const r=wochenplan[t]; if(!r) return; const n=naehrwerte(r);
+    cont.innerHTML+=`<div class="week-row"><div class="week-day">${t.slice(0,2).toUpperCase()}</div><div><div class="week-meal">${r.emoji} ${r.name}</div><div class="week-sub">${n.kcal} kcal · ${n.protein}g Protein · ${n.ballaststoffe}g Ballaststoffe · ⏱️ ${r.zeit} Min.</div></div><button class="week-respin" onclick="tagNeuMischen('${t}')">🔄</button></div>`;
   });
 }
+function alleZurListe(){ TAGE.forEach(t=>{if(wochenplan[t])zurEinkaufsliste(wochenplan[t]);}); wocheSchliessen(); }
 
-function replanDay(day) {
-  const meals = getFilteredMeals();
-  weekPlan[day] = meals[Math.floor(Math.random() * meals.length)];
-  renderWeekPlan();
+function rezeptGridZeigen(){
+  document.getElementById('rezeptGrid').innerHTML=gefilterteRezepte().map(r=>{
+    const n=naehrwerte(r);
+    return `<div class="meal-card" onclick="aktuell=REZEPTE.find(x=>x.id===${r.id});ergebnisZeigen(aktuell);window.scrollTo({top:0,behavior:'smooth'});">
+      <div class="card-emoji">${r.emoji}</div>
+      <div class="card-name">${r.name}</div>
+      <div class="card-sub">${r.küche} · ⏱️ ${r.zeit} Min.</div>
+      <div class="card-badges">
+        <span class="badge b-kcal">${n.kcal} kcal</span>
+        <span class="badge b-prot">${n.protein}g P</span>
+        <span class="badge b-fib">${n.ballaststoffe}g B</span>
+      </div>
+    </div>`;
+  }).join('');
 }
 
-function renderWeekPlan() {
-  const container = document.getElementById('weekPlanRows');
-  container.innerHTML = '';
-  DAYS.forEach(day => {
-    const meal = weekPlan[day];
-    if (!meal) return;
-    const n = getNutrition(meal);
-    container.innerHTML += `
-      <div class="week-day-row">
-        <div class="week-day-label">${day.slice(0,3).toUpperCase()}</div>
-        <div>
-          <div class="week-meal-display">${meal.emoji} ${meal.name}</div>
-          <div style="font-size:0.72rem;color:var(--mid);margin-top:3px;">${n.kcal} kcal · ${n.protein}g prot · ${n.fiber}g fiber · ⏱️ ${meal.time}min</div>
-        </div>
-        <button class="week-respin" onclick="replanDay('${day}')">🔄</button>
-      </div>`;
-  });
-}
-
-function addAllToGrocery() {
-  DAYS.forEach(day => {
-    if (weekPlan[day]) addToGrocery(weekPlan[day]);
-  });
-  closeModal();
-}
-
-// ═══════════════════════════════════════════════════════
-//  MEAL GRID
-// ═══════════════════════════════════════════════════════
-function renderMealGrid() {
-  const meals = getFilteredMeals();
-  const grid = document.getElementById('mealGrid');
-  grid.innerHTML = '';
-  meals.forEach(meal => {
-    const n = getNutrition(meal);
-    grid.innerHTML += `
-      <div class="meal-card" onclick="currentMeal=MEALS.find(m=>m.id===${meal.id});showResult(currentMeal);">
-        <div class="meal-card-emoji">${meal.emoji}</div>
-        <div class="meal-card-name">${meal.name}</div>
-        <div style="font-size:0.72rem;color:var(--mid);margin-bottom:0.5rem;">${meal.cuisine} · ⏱️ ${meal.time}min</div>
-        <div class="meal-card-mini-stats">
-          <span class="mini-stat mini-kcal">${n.kcal} kcal</span>
-          <span class="mini-stat mini-prot">${n.protein}g P</span>
-          <span class="mini-stat mini-fiber">${n.fiber}g F</span>
-        </div>
-      </div>`;
-  });
-}
-
-// ═══════════════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════════════
-drawWheel();
-renderMealGrid();
+radZeichnen();
+rezeptGridZeigen();
 </script>
 </body>
 </html>
