@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DinnerSpin 🍽️</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream: #FAF6EF;
+      --warm: #F5ECD7;
+      --rust: #C4522A;
+      --rust-light: #E8734A;
+      --forest: #2D5A3D;
+      --forest-light: #4A8C63;
+      --gold: #D4A843;
+      --dark: #1A1208;
+      --mid: #5C4A2A;
+      --text: #2C1F0E;
+      --card-bg: #FFFDF8;
+      --border: #E8DCC8;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999; opacity: 0.4;
+    }
+
+    header {
+      background: var(--forest);
+      color: var(--cream);
+      padding: 1.5rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    }
+
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      letter-spacing: -0.5px;
+    }
+
+    header h1 span { color: var(--gold); }
+
+    .header-sub {
+      font-size: 0.85rem;
+      opacity: 0.7;
+      margin-top: 2px;
+    }
+
+    .persona-toggle {
+      display: flex; gap: 0.5rem;
+    }
+
+    .persona-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: white;
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .persona-btn.active {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--dark);
+      font-weight: 600;
+    }
+
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* WHEEL SECTION */
+    .wheel-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .wheel-wrapper {
+      position: relative;
+      width: 380px;
+      height: 380px;
+    }
+
+    .wheel-pointer {
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-top: 28px solid var(--rust);
+      z-index: 10;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
+    }
+
+    #wheel-canvas {
+      border-radius: 50%;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.2), 0 0 0 6px var(--warm), 0 0 0 8px var(--border);
+      transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+    }
+
+    .spin-btn {
+      background: var(--rust);
+      color: white;
+      border: none;
+      padding: 1rem 3rem;
+      font-size: 1.1rem;
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(196,82,42,0.4);
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    .spin-btn:hover { background: var(--rust-light); transform: translateY(-2px); box-shadow: 0 6px 25px rgba(196,82,42,0.5); }
+    .spin-btn:active { transform: translateY(0); }
+    .spin-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* RESULT CARD */
+    .result-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      display: none;
+      animation: slideUp 0.4s ease;
+    }
+
+    .result-card.visible { display: block; }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-meal-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.8rem;
+      color: var(--forest);
+      margin-bottom: 0.25rem;
+    }
+
+    .result-tags {
+      display: flex; gap: 0.4rem; flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .tag {
+      background: var(--warm);
+      border: 1px solid var(--border);
+      color: var(--mid);
+      padding: 0.2rem 0.65rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .tag.high { background: #FCEEE8; border-color: #F0B8A0; color: var(--rust); }
+    .tag.low { background: #EAF5EC; border-color: #A8D4B0; color: var(--forest); }
+
+    .nutrition-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .nutri-box {
+      background: var(--warm);
+      border-radius: 12px;
+      padding: 0.6rem 0.5rem;
+      text-align: center;
+    }
+
+    .nutri-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--forest);
+    }
+
+    .nutri-label {
+      font-size: 0.68rem;
+      color: var(--mid);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .result-actions {
+      display: flex; gap: 0.75rem;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--mid);
+      padding: 0.55rem 1.1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover { background: var(--warm); border-color: var(--gold); color: var(--text); }
+
+    .btn-primary-sm {
+      background: var(--forest);
+      color: white;
+      border: none;
+      padding: 0.55rem 1.2rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-primary-sm:hover { background: var(--forest-light); }
+
+    /* SIDEBAR */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.25rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+
+    .panel-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      color: var(--forest);
+      margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+
+    /* FILTERS */
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .filter-chip {
+      background: var(--warm);
+      border: 1.5px solid var(--border);
+      color: var(--mid);
+      padding: 0.45rem 0.7rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-family: 'DM Sans', sans-serif;
+      text-align: center;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .filter-chip.active {
+      background: var(--forest);
+      border-color: var(--forest);
+      color: white;
+    }
+
+    /* GROCERY LIST */
+    .grocery-week {
+      margin-bottom: 0.75rem;
+    }
+
+    .grocery-day {
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--mid);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.25rem;
+    }
+
+    .grocery-meal {
+      font-size: 0.9rem;
+      color: var(--text);
+      padding: 0.3rem 0.5rem;
+      background: var(--warm);
+      border-radius: 8px;
+      margin-bottom: 0.2rem;
+      cursor: pointer;
+    }
+
+    .grocery-meal:hover { background: var(--border); }
+
+    .grocery-items {
+      margin-top: 0.75rem;
+      border-top: 1px solid var(--border);
+      padding-top: 0.75rem;
+    }
+
+    .grocery-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.3rem 0;
+      font-size: 0.85rem;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .grocery-item input[type="checkbox"] {
+      accent-color: var(--forest);
+      width: 16px; height: 16px;
+    }
+
+    .grocery-item.checked label { text-decoration: line-through; color: #999; }
+
+    .store-badge {
+      font-size: 0.7rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 6px;
+      font-weight: 600;
+      margin-left: auto;
+    }
+
+    .store-spar { background: #e8f5e9; color: #2e7d32; }
+    .store-hofer { background: #fff3e0; color: #e65100; }
+
+    /* MEAL BROWSER */
+    .meal-browser {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem 3rem;
+    }
+
+    .browser-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      color: var(--forest);
+      margin-bottom: 1.25rem;
+    }
+
+    .meal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .meal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .meal-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      border-color: var(--gold);
+    }
+
+    .meal-card-emoji {
+      font-size: 2.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .meal-card-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      margin-bottom: 0.4rem;
+    }
+
+    .meal-card-mini-stats {
+      display: flex; gap: 0.4rem; flex-wrap: wrap;
+    }
+
+    .mini-stat {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+
+    .mini-kcal { background: #FFF0E8; color: #C4522A; }
+    .mini-prot { background: #E8F0FF; color: #3553C0; }
+    .mini-fiber { background: #EAF5EC; color: #2D5A3D; }
+
+    .week-planner-btn {
+      background: var(--gold);
+      color: var(--dark);
+      border: none;
+      padding: 0.8rem 2rem;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(212,168,67,0.35);
+    }
+
+    .week-planner-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(212,168,67,0.5); }
+
+    /* WEEKLY PLAN MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(26,18,8,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--card-bg);
+      border-radius: 24px;
+      padding: 2rem;
+      max-width: 700px;
+      width: 95vw;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideUp 0.3s ease;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: var(--forest);
+    }
+
+    .close-btn {
+      background: var(--warm);
+      border: none;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .week-day-row {
+      display: grid;
+      grid-template-columns: 100px 1fr auto;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 0.6rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .week-day-label {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--mid);
+    }
+
+    .week-meal-display {
+      font-size: 0.9rem;
+      padding: 0.4rem 0.75rem;
+      background: var(--warm);
+      border-radius: 8px;
+    }
+
+    .week-respin {
+      background: none;
+      border: 1.5px solid var(--border);
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .week-respin:hover { background: var(--warm); border-color: var(--gold); }
+
+    .modal-actions {
+      display: flex; gap: 0.75rem; margin-top: 1.5rem;
+    }
+
+    .kcal-bar-wrapper {
+      margin-top: 0.4rem;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .kcal-bar {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--mid);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 900px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+      }
+      .wheel-wrapper { width: 300px; height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Dinner<span>Spin</span> 🍽️</h1>
+    <div class="header-sub">Your weekly dinner & grocery companion</div>
+  </div>
+  <div class="persona-toggle">
+    <button class="persona-btn active" onclick="setPersona('both')" id="btn-both">👫 Both</button>
+    <button class="persona-btn" onclick="setPersona('male')" id="btn-male">♂ Him</button>
+    <button class="persona-btn" onclick="setPersona('female')" id="btn-female">♀ Her</button>
+  </div>
+</header>
+
+<div class="main-layout">
+
+  <!-- WHEEL + RESULT -->
+  <div class="wheel-section">
+    <div class="wheel-wrapper">
+      <div class="wheel-pointer"></div>
+      <canvas id="wheel-canvas" width="380" height="380"></canvas>
+    </div>
+
+    <button class="spin-btn" id="spinBtn" onclick="spin()">🎲 Spin for Tonight's Dinner</button>
+
+    <div class="result-card" id="resultCard">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+        <div>
+          <div style="font-size:2.5rem;" id="resultEmoji">🍝</div>
+          <div class="result-meal-name" id="resultName">Pasta Bolognese</div>
+        </div>
+        <div style="text-align:right; font-size:0.8rem; color:var(--mid);" id="resultKcalNote"></div>
+      </div>
+      <div class="result-tags" id="resultTags"></div>
+      <div class="nutrition-grid" id="nutritionGrid"></div>
+      <div class="kcal-bar-wrapper"><div class="kcal-bar" id="kcalBar" style="width:0%;background:var(--rust)"></div></div>
+      <div style="font-size:0.72rem;color:var(--mid);margin: 0.3rem 0 1rem;text-align:right;" id="kcalPercent"></div>
+      <div class="result-actions">
+        <button class="btn-secondary" onclick="spin()">🔄 Re-spin</button>
+        <button class="btn-secondary" onclick="openModal()">📅 Plan Week</button>
+        <button class="btn-primary-sm" onclick="addToGrocery(currentMeal)">🛒 Add to List</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- FILTERS -->
+    <div class="panel">
+      <div class="panel-title">⚗️ Nutritional Filters</div>
+      <div class="filter-grid">
+        <div class="filter-chip active" onclick="toggleFilter(this,'all')" data-filter="all">🍽️ All Meals</div>
+        <div class="filter-chip" onclick="toggleFilter(this,'low-kcal')" data-filter="low-kcal">🥗 Low Calorie</div>
+        <div class="filter-chip" onclick="toggleFilter(this,'high-protein')" data-filter="high-protein">💪 High Protein</div>
+        <div class="filter-chip" onclick="toggleFilter(this,'high-fiber')" data-filter="high-fiber">🌾 High Fiber</div>
+        <div class="filter-chip" onclick="toggleFilter(this,'quick')" data-filter="quick">⚡ Quick (≤30 min)</div>
+        <div class="filter-chip" onclick="toggleFilter(this,'vegetarian')" data-filter="vegetarian">🌿 Vegetarian</div>
+      </div>
+    </div>
+
+    <!-- GROCERY LIST -->
+    <div class="panel" style="flex:1;">
+      <div class="panel-title" style="justify-content:space-between;">
+        <span>🛒 Grocery List</span>
+        <button class="btn-secondary" style="font-size:0.75rem;padding:0.25rem 0.6rem;" onclick="clearGrocery()">Clear</button>
+      </div>
+      <div id="groceryList">
+        <div class="empty-state">Spin the wheel or plan your week to auto-generate your shopping list 🎯</div>
+      </div>
+      <div id="groceryItemsSection" style="display:none;">
+        <div class="grocery-items" id="groceryItems"></div>
+        <button class="btn-primary-sm" style="margin-top:0.75rem;width:100%;text-align:center;" onclick="exportGrocery()">📤 Export List</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MEAL BROWSER -->
+<div class="meal-browser">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
+    <div class="browser-title">📖 All Meals</div>
+    <button class="week-planner-btn" onclick="openModal()">📅 Plan the Whole Week</button>
+  </div>
+  <div class="meal-grid" id="mealGrid"></div>
+</div>
+
+<!-- WEEKLY PLAN MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📅 Weekly Dinner Plan</div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div id="weekPlanRows"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="reshuffleAll()">🔀 Reshuffle All</button>
+      <button class="btn-primary-sm" onclick="addAllToGrocery()">🛒 Add All to Grocery</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  MEAL DATABASE
+// ═══════════════════════════════════════════════════════
+const MEALS = [
+  {
+    id:1, name:'Pasta Bolognese', emoji:'🍝', cuisine:'Italian',
+    tags:['high-protein','quick'], vegetarian:false,
+    time:25,
+    male:  { kcal:680, protein:38, fiber:6,  fat:24, carbs:72 },
+    female:{ kcal:520, protein:29, fiber:5,  fat:18, carbs:56 },
+    ingredients:[
+      {name:'Minced beef 500g', store:'hofer'},{name:'Spaghetti 400g', store:'spar'},
+      {name:'Tomato passata', store:'spar'},{name:'Onion x2', store:'hofer'},
+      {name:'Garlic', store:'spar'},{name:'Parmesan', store:'spar'}
+    ]
+  },
+  {
+    id:2, name:'Chicken Stir-fry', emoji:'🍜', cuisine:'Asian',
+    tags:['high-protein','low-kcal','quick'], vegetarian:false,
+    time:20,
+    male:  { kcal:520, protein:45, fiber:8,  fat:14, carbs:42 },
+    female:{ kcal:400, protein:35, fiber:7,  fat:10, carbs:32 },
+    ingredients:[
+      {name:'Chicken breast 600g', store:'hofer'},{name:'Bell peppers x2', store:'spar'},
+      {name:'Broccoli', store:'spar'},{name:'Soy sauce', store:'spar'},
+      {name:'Sesame oil', store:'spar'},{name:'Rice 300g', store:'hofer'}
+    ]
+  },
+  {
+    id:3, name:'Lentil Soup', emoji:'🍲', cuisine:'Eastern European',
+    tags:['high-fiber','vegetarian','low-kcal'], vegetarian:true,
+    time:35,
+    male:  { kcal:380, protein:22, fiber:18, fat:8,  carbs:52 },
+    female:{ kcal:300, protein:17, fiber:15, fat:6,  carbs:40 },
+    ingredients:[
+      {name:'Red lentils 400g', store:'hofer'},{name:'Carrots x3', store:'spar'},
+      {name:'Celery', store:'spar'},{name:'Cumin', store:'spar'},
+      {name:'Vegetable stock', store:'hofer'},{name:'Lemon x1', store:'spar'}
+    ]
+  },
+  {
+    id:4, name:'Salmon with Veggies', emoji:'🐟', cuisine:'Nordic',
+    tags:['high-protein','low-kcal'], vegetarian:false,
+    time:30,
+    male:  { kcal:540, protein:48, fiber:5,  fat:28, carbs:18 },
+    female:{ kcal:420, protein:38, fiber:4,  fat:22, carbs:14 },
+    ingredients:[
+      {name:'Salmon fillet 2x200g', store:'spar'},{name:'Zucchini x2', store:'hofer'},
+      {name:'Cherry tomatoes', store:'spar'},{name:'Olive oil', store:'spar'},
+      {name:'Lemon x1', store:'spar'},{name:'Dill', store:'hofer'}
+    ]
+  },
+  {
+    id:5, name:'Veggie Buddha Bowl', emoji:'🥗', cuisine:'International',
+    tags:['high-fiber','vegetarian','low-kcal','quick'], vegetarian:true,
+    time:20,
+    male:  { kcal:460, protein:18, fiber:14, fat:16, carbs:58 },
+    female:{ kcal:360, protein:14, fiber:12, fat:12, carbs:44 },
+    ingredients:[
+      {name:'Chickpeas 400g can', store:'hofer'},{name:'Quinoa 200g', store:'spar'},
+      {name:'Avocado x1', store:'spar'},{name:'Cucumber', store:'hofer'},
+      {name:'Tahini', store:'spar'},{name:'Mixed greens', store:'spar'}
+    ]
+  },
+  {
+    id:6, name:'Beef Goulash', emoji:'🥘', cuisine:'Austrian',
+    tags:['high-protein'], vegetarian:false,
+    time:90,
+    male:  { kcal:720, protein:52, fiber:7,  fat:30, carbs:48 },
+    female:{ kcal:560, protein:40, fiber:6,  fat:22, carbs:36 },
+    ingredients:[
+      {name:'Beef chuck 700g', store:'hofer'},{name:'Onions x3', store:'hofer'},
+      {name:'Paprika powder', store:'spar'},{name:'Potatoes 500g', store:'hofer'},
+      {name:'Sour cream', store:'spar'},{name:'Tomato paste', store:'spar'}
+    ]
+  },
+  {
+    id:7, name:'Shakshuka', emoji:'🍳', cuisine:'Middle Eastern',
+    tags:['vegetarian','quick','high-protein'], vegetarian:true,
+    time:25,
+    male:  { kcal:420, protein:24, fiber:8,  fat:22, carbs:28 },
+    female:{ kcal:340, protein:19, fiber:7,  fat:17, carbs:22 },
+    ingredients:[
+      {name:'Eggs x6', store:'hofer'},{name:'Crushed tomatoes 2 cans', store:'spar'},
+      {name:'Red pepper x2', store:'spar'},{name:'Chili flakes', store:'spar'},
+      {name:'Cumin + paprika', store:'spar'},{name:'Feta cheese', store:'hofer'}
+    ]
+  },
+  {
+    id:8, name:'Grilled Trout & Rice', emoji:'🐠', cuisine:'Austrian',
+    tags:['high-protein','low-kcal'], vegetarian:false,
+    time:30,
+    male:  { kcal:490, protein:44, fiber:3,  fat:14, carbs:42 },
+    female:{ kcal:380, protein:35, fiber:2,  fat:10, carbs:32 },
+    ingredients:[
+      {name:'Trout 2 whole', store:'spar'},{name:'Basmati rice 300g', store:'hofer'},
+      {name:'Lemon x2', store:'spar'},{name:'Fresh herbs', store:'spar'},
+      {name:'Garlic', store:'hofer'},{name:'Butter', store:'hofer'}
+    ]
+  },
+  {
+    id:9, name:'Turkey Meatballs & Sauce', emoji:'🍖', cuisine:'Italian',
+    tags:['high-protein','low-kcal'], vegetarian:false,
+    time:40,
+    male:  { kcal:560, protein:50, fiber:5,  fat:18, carbs:38 },
+    female:{ kcal:430, protein:39, fiber:4,  fat:13, carbs:28 },
+    ingredients:[
+      {name:'Turkey mince 600g', store:'hofer'},{name:'Breadcrumbs', store:'spar'},
+      {name:'Eggs x2', store:'hofer'},{name:'Tomato sauce', store:'spar'},
+      {name:'Pasta 300g', store:'spar'},{name:'Parmesan', store:'spar'}
+    ]
+  },
+  {
+    id:10, name:'Chickpea Curry', emoji:'🍛', cuisine:'Indian',
+    tags:['vegetarian','high-fiber'], vegetarian:true,
+    time:35,
+    male:  { kcal:500, protein:20, fiber:16, fat:18, carbs:62 },
+    female:{ kcal:390, protein:15, fiber:13, fat:13, carbs:48 },
+    ingredients:[
+      {name:'Chickpeas 800g cans', store:'hofer'},{name:'Coconut milk', store:'spar'},
+      {name:'Curry paste', store:'spar'},{name:'Basmati rice 300g', store:'hofer'},
+      {name:'Spinach 200g', store:'spar'},{name:'Ginger + garlic', store:'hofer'}
+    ]
+  },
+  {
+    id:11, name:'Schnitzel & Salad', emoji:'🥩', cuisine:'Austrian',
+    tags:['high-protein','quick'], vegetarian:false,
+    time:25,
+    male:  { kcal:650, protein:46, fiber:4,  fat:32, carbs:44 },
+    female:{ kcal:490, protein:35, fiber:3,  fat:24, carbs:32 },
+    ingredients:[
+      {name:'Pork schnitzel 4 pieces', store:'hofer'},{name:'Breadcrumbs', store:'spar'},
+      {name:'Eggs x2', store:'hofer'},{name:'Flour', store:'spar'},
+      {name:'Mixed salad leaves', store:'spar'},{name:'Lemon x2', store:'spar'}
+    ]
+  },
+  {
+    id:12, name:'Zucchini Fritters', emoji:'🥒', cuisine:'Mediterranean',
+    tags:['vegetarian','low-kcal','quick','high-fiber'], vegetarian:true,
+    time:20,
+    male:  { kcal:340, protein:16, fiber:9,  fat:14, carbs:32 },
+    female:{ kcal:265, protein:12, fiber:7,  fat:10, carbs:24 },
+    ingredients:[
+      {name:'Zucchini x4', store:'hofer'},{name:'Eggs x3', store:'hofer'},
+      {name:'Feta 150g', store:'spar'},{name:'Flour', store:'spar'},
+      {name:'Dill', store:'spar'},{name:'Greek yoghurt', store:'spar'}
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let persona = 'both';
+let activeFilter = 'all';
+let currentMeal = null;
+let groceryIngredients = {};
+let weekPlan = {};
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function getNutrition(meal) {
+  if (persona === 'male') return meal.male;
+  if (persona === 'female') return meal.female;
+  // both: average
+  return {
+    kcal: Math.round((meal.male.kcal + meal.female.kcal) / 2),
+    protein: Math.round((meal.male.protein + meal.female.protein) / 2),
+    fiber: Math.round((meal.male.fiber + meal.female.fiber) / 2),
+    fat: Math.round((meal.male.fat + meal.female.fat) / 2),
+    carbs: Math.round((meal.male.carbs + meal.female.carbs) / 2),
+  };
+}
+
+function getFilteredMeals() {
+  if (activeFilter === 'all') return MEALS;
+  if (activeFilter === 'vegetarian') return MEALS.filter(m => m.vegetarian);
+  if (activeFilter === 'quick') return MEALS.filter(m => m.time <= 30);
+  return MEALS.filter(m => m.tags.includes(activeFilter));
+}
+
+function setPersona(p) {
+  persona = p;
+  ['both','male','female'].forEach(x => document.getElementById('btn-'+x).classList.remove('active'));
+  document.getElementById('btn-'+p).classList.add('active');
+  drawWheel();
+  renderMealGrid();
+  if (currentMeal) showResult(currentMeal);
+}
+
+function toggleFilter(el, filter) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  activeFilter = filter;
+  drawWheel();
+  renderMealGrid();
+}
+
+// ═══════════════════════════════════════════════════════
+//  WHEEL
+// ═══════════════════════════════════════════════════════
+const WHEEL_COLORS = [
+  '#2D5A3D','#C4522A','#D4A843','#4A8C63','#8B3A1A',
+  '#3D7A55','#E8734A','#B8922E','#1E3D2A','#A84828',
+  '#5A9E72','#D4943E'
+];
+
+let wheelAngle = 0;
+let spinning = false;
+
+function drawWheel() {
+  const meals = getFilteredMeals();
+  const canvas = document.getElementById('wheel-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W/2, cy = H/2, r = W/2 - 10;
+  const slice = (2 * Math.PI) / meals.length;
+
+  ctx.clearRect(0, 0, W, H);
+
+  meals.forEach((meal, i) => {
+    const start = wheelAngle + i * slice;
+    const end = start + slice;
+
+    // Slice
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, end);
+    ctx.closePath();
+    ctx.fillStyle = WHEEL_COLORS[i % WHEEL_COLORS.length];
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Emoji + Text
+    const mid = start + slice / 2;
+    const textR = r * 0.65;
+    const tx = cx + Math.cos(mid) * textR;
+    const ty = cy + Math.sin(mid) * textR;
+
+    ctx.save();
+    ctx.translate(tx, ty);
+    ctx.rotate(mid + Math.PI / 2);
+
+    // emoji
+    ctx.font = `${Math.min(22, 280 / meals.length)}px serif`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'white';
+    ctx.fillText(meal.emoji, 0, -8);
+
+    // name
+    const fontSize = Math.min(11, 220 / meals.length);
+    ctx.font = `600 ${fontSize}px DM Sans, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    const shortName = meal.name.length > 12 ? meal.name.slice(0,11) + '…' : meal.name;
+    ctx.fillText(shortName, 0, 8);
+    ctx.restore();
+  });
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, 26, 0, 2 * Math.PI);
+  ctx.fillStyle = '#FAF6EF';
+  ctx.fill();
+  ctx.strokeStyle = '#E8DCC8';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.font = '18px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🍽️', cx, cy);
+}
+
+function spin() {
+  if (spinning) return;
+  spinning = true;
+  document.getElementById('spinBtn').disabled = true;
+
+  const meals = getFilteredMeals();
+  const extraSpins = 5 + Math.random() * 5;
+  const sliceAngle = (2 * Math.PI) / meals.length;
+  const targetIndex = Math.floor(Math.random() * meals.length);
+  // aim so the pointer (top = -PI/2) lands in the middle of targetIndex's slice
+  const targetAngle = -Math.PI/2 - (targetIndex * sliceAngle + sliceAngle/2);
+  const totalAngle = extraSpins * 2 * Math.PI + (targetAngle - wheelAngle % (2 * Math.PI));
+
+  const duration = 4000;
+  const start = performance.now();
+  const startAngle = wheelAngle;
+
+  function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+
+  function animate(now) {
+    const elapsed = now - start;
+    const t = Math.min(elapsed / duration, 1);
+    wheelAngle = startAngle + totalAngle * easeOut(t);
+    drawWheel();
+
+    if (t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      spinning = false;
+      document.getElementById('spinBtn').disabled = false;
+      currentMeal = meals[targetIndex];
+      showResult(currentMeal);
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+// ═══════════════════════════════════════════════════════
+//  RESULT CARD
+// ═══════════════════════════════════════════════════════
+function showResult(meal) {
+  const n = getNutrition(meal);
+  const card = document.getElementById('resultCard');
+  card.classList.remove('visible');
+  void card.offsetWidth;
+  card.classList.add('visible');
+
+  document.getElementById('resultEmoji').textContent = meal.emoji;
+  document.getElementById('resultName').textContent = meal.name;
+
+  const kcalGoal = persona === 'female' ? 600 : persona === 'male' ? 800 : 700;
+  const pct = Math.min(Math.round((n.kcal / kcalGoal) * 100), 100);
+
+  document.getElementById('kcalBar').style.width = pct + '%';
+  document.getElementById('kcalBar').style.background = pct > 80 ? '#C4522A' : '#4A8C63';
+  document.getElementById('kcalPercent').textContent = `${pct}% of dinner kcal target`;
+  document.getElementById('resultKcalNote').innerHTML = `⏱️ ${meal.time} min<br>🌍 ${meal.cuisine}`;
+
+  // Tags
+  const tagEl = document.getElementById('resultTags');
+  tagEl.innerHTML = '';
+  meal.tags.forEach(t => {
+    const cls = t.includes('high') ? 'high' : t.includes('low') ? 'low' : '';
+    tagEl.innerHTML += `<span class="tag ${cls}">${tagLabel(t)}</span>`;
+  });
+  if (meal.vegetarian) tagEl.innerHTML += `<span class="tag low">🌿 Vegetarian</span>`;
+
+  // Nutrition
+  document.getElementById('nutritionGrid').innerHTML = `
+    <div class="nutri-box"><div class="nutri-val" style="color:var(--rust)">${n.kcal}</div><div class="nutri-label">kcal</div></div>
+    <div class="nutri-box"><div class="nutri-val" style="color:#3553C0">${n.protein}g</div><div class="nutri-label">Protein</div></div>
+    <div class="nutri-box"><div class="nutri-val" style="color:var(--forest)">${n.fiber}g</div><div class="nutri-label">Fiber</div></div>
+    <div class="nutri-box"><div class="nutri-val" style="color:var(--gold)">${n.carbs}g</div><div class="nutri-label">Carbs</div></div>
+  `;
+}
+
+function tagLabel(t) {
+  const map = { 'high-protein':'💪 High Protein','low-kcal':'🥗 Low Cal','high-fiber':'🌾 High Fiber','quick':'⚡ Quick' };
+  return map[t] || t;
+}
+
+// ═══════════════════════════════════════════════════════
+//  GROCERY LIST
+// ═══════════════════════════════════════════════════════
+function addToGrocery(meal) {
+  if (!meal) return;
+  meal.ingredients.forEach(ing => {
+    groceryIngredients[ing.name] = { store: ing.store, checked: false };
+  });
+  renderGrocery();
+}
+
+function renderGrocery() {
+  const items = Object.entries(groceryIngredients);
+  const container = document.getElementById('groceryList');
+  const section = document.getElementById('groceryItemsSection');
+
+  if (items.length === 0) {
+    container.innerHTML = '<div class="empty-state">Spin the wheel or plan your week to auto-generate your shopping list 🎯</div>';
+    section.style.display = 'none';
+    return;
+  }
+
+  container.innerHTML = '';
+  section.style.display = 'block';
+
+  const byStore = { spar: [], hofer: [] };
+  items.forEach(([name, data]) => byStore[data.store].push({ name, ...data }));
+
+  const groceryEl = document.getElementById('groceryItems');
+  groceryEl.innerHTML = '';
+
+  ['spar','hofer'].forEach(store => {
+    if (byStore[store].length === 0) return;
+    groceryEl.innerHTML += `<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--mid);letter-spacing:1px;margin:0.6rem 0 0.3rem;">${store === 'spar' ? '🟢 SPAR' : '🟠 HOFER'}</div>`;
+    byStore[store].forEach(item => {
+      const id = 'g-' + item.name.replace(/\s+/g,'_');
+      groceryEl.innerHTML += `
+        <div class="grocery-item ${item.checked ? 'checked' : ''}" id="row-${id}">
+          <input type="checkbox" id="${id}" ${item.checked ? 'checked' : ''} onchange="toggleItem('${item.name}')"/>
+          <label for="${id}">${item.name}</label>
+        </div>`;
+    });
+  });
+}
+
+function toggleItem(name) {
+  if (groceryIngredients[name]) {
+    groceryIngredients[name].checked = !groceryIngredients[name].checked;
+    renderGrocery();
+  }
+}
+
+function clearGrocery() {
+  groceryIngredients = {};
+  renderGrocery();
+}
+
+function exportGrocery() {
+  const lines = ['🛒 GROCERY LIST — DinnerSpin\n'];
+  ['spar','hofer'].forEach(store => {
+    const items = Object.entries(groceryIngredients).filter(([,d]) => d.store === store);
+    if (items.length) {
+      lines.push(`\n${store.toUpperCase()}:`);
+      items.forEach(([name]) => lines.push(`  ☐ ${name}`));
+    }
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'grocery-list.txt';
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════
+//  WEEK PLAN MODAL
+// ═══════════════════════════════════════════════════════
+function openModal() {
+  if (Object.keys(weekPlan).length === 0) reshuffleAll();
+  renderWeekPlan();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function reshuffleAll() {
+  const meals = getFilteredMeals();
+  DAYS.forEach((day, i) => {
+    weekPlan[day] = meals[i % meals.length];
+  });
+  // Shuffle
+  DAYS.forEach(day => {
+    const idx = Math.floor(Math.random() * meals.length);
+    weekPlan[day] = meals[idx];
+  });
+}
+
+function replanDay(day) {
+  const meals = getFilteredMeals();
+  weekPlan[day] = meals[Math.floor(Math.random() * meals.length)];
+  renderWeekPlan();
+}
+
+function renderWeekPlan() {
+  const container = document.getElementById('weekPlanRows');
+  container.innerHTML = '';
+  DAYS.forEach(day => {
+    const meal = weekPlan[day];
+    if (!meal) return;
+    const n = getNutrition(meal);
+    container.innerHTML += `
+      <div class="week-day-row">
+        <div class="week-day-label">${day.slice(0,3).toUpperCase()}</div>
+        <div>
+          <div class="week-meal-display">${meal.emoji} ${meal.name}</div>
+          <div style="font-size:0.72rem;color:var(--mid);margin-top:3px;">${n.kcal} kcal · ${n.protein}g prot · ${n.fiber}g fiber · ⏱️ ${meal.time}min</div>
+        </div>
+        <button class="week-respin" onclick="replanDay('${day}')">🔄</button>
+      </div>`;
+  });
+}
+
+function addAllToGrocery() {
+  DAYS.forEach(day => {
+    if (weekPlan[day]) addToGrocery(weekPlan[day]);
+  });
+  closeModal();
+}
+
+// ═══════════════════════════════════════════════════════
+//  MEAL GRID
+// ═══════════════════════════════════════════════════════
+function renderMealGrid() {
+  const meals = getFilteredMeals();
+  const grid = document.getElementById('mealGrid');
+  grid.innerHTML = '';
+  meals.forEach(meal => {
+    const n = getNutrition(meal);
+    grid.innerHTML += `
+      <div class="meal-card" onclick="currentMeal=MEALS.find(m=>m.id===${meal.id});showResult(currentMeal);">
+        <div class="meal-card-emoji">${meal.emoji}</div>
+        <div class="meal-card-name">${meal.name}</div>
+        <div style="font-size:0.72rem;color:var(--mid);margin-bottom:0.5rem;">${meal.cuisine} · ⏱️ ${meal.time}min</div>
+        <div class="meal-card-mini-stats">
+          <span class="mini-stat mini-kcal">${n.kcal} kcal</span>
+          <span class="mini-stat mini-prot">${n.protein}g P</span>
+          <span class="mini-stat mini-fiber">${n.fiber}g F</span>
+        </div>
+      </div>`;
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+drawWheel();
+renderMealGrid();
+</script>
+</body>
+</html>
