@@ -2,11 +2,6 @@
 
 > **Was kochen wir heute Abend?** — Das Glücksrad für Abendessen-Ideen, Nährwert-Tracking und automatische Einkaufslisten für Spar & Hofer.
 
-![Static Badge](https://img.shields.io/badge/Sprache-Deutsch-green)
-![Static Badge](https://img.shields.io/badge/Tech-Vanilla%20HTML%2FCSS%2FJS-orange)
-![Static Badge](https://img.shields.io/badge/API-Spoonacular-blue)
-![Static Badge](https://img.shields.io/badge/Deployment-GitHub%20Pages-black)
-
 ---
 
 ## 🎯 Was ist das?
