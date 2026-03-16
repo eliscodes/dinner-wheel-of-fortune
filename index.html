@@ -236,6 +236,10 @@
       <span id="quotaText">API …</span>
       <div class="quota-bar-wrap"><div class="quota-bar" id="quotaBar"></div></div>
     </div>
+    <div id="apiStatusBadge" class="quota-badge" style="display:none;">
+      <span id="apiStatusIcon">⏳</span>
+      <span id="apiStatusText">Lade…</span>
+    </div>
     <div class="persona-wrap">
       <span class="persona-label">Nährwerte für:</span>
       <button class="persona-btn active" id="btn-beide" onclick="setPersona('beide')">👫 Beide</button>
@@ -341,7 +345,7 @@
 // ════════════════════════════════════════════════════════
 //  SPOONACULAR API CONFIG
 // ════════════════════════════════════════════════════════
-// API key (obfuscated – do not commit to public repos with real keys)
+// API key obfuscated
 // Obfuscated config — do not store plaintext API credentials in source
 const _ds_a = '225b3654090b074a';
 const _ds_b = '5104544c2f514030';
@@ -696,8 +700,91 @@ const EIGENE_REZEPTE = [
 ];
 
 // ════════════════════════════════════════════════════════
-//  API FETCH FUNCTIONS
+//  ÜBERSETZUNG – MyMemory API (kostenlos, kein Key)
 // ════════════════════════════════════════════════════════
+const TRANS_CACHE_KEY = 'dinnerspin_trans_v1';
+const TRANS_DELAY_MS  = 350; // stay well under rate limit
+
+function getTransCache() {
+  try { return JSON.parse(localStorage.getItem(TRANS_CACHE_KEY) || '{}'); } catch(e){ return {}; }
+}
+function saveTransCache(c) {
+  try { localStorage.setItem(TRANS_CACHE_KEY, JSON.stringify(c)); } catch(e){}
+}
+
+async function translateText(text) {
+  if (!text || !text.trim()) return text;
+  // Skip if already looks German (contains common German words/chars)
+  if (/[äöüÄÖÜß]/.test(text)) return text;
+
+  const cache = getTransCache();
+  const key = text.slice(0, 120); // use first 120 chars as cache key
+  if (cache[key]) return cache[key];
+
+  try {
+    await new Promise(r => setTimeout(r, TRANS_DELAY_MS));
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|de`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const translated = data?.responseData?.translatedText || text;
+    // MyMemory returns error string if quota hit – fall back to original
+    if (translated.toLowerCase().includes('mymemory warning') || translated.toLowerCase().includes('quota')) {
+      return text;
+    }
+    cache[key] = translated;
+    saveTransCache(cache);
+    return translated;
+  } catch(e) {
+    return text; // graceful fallback
+  }
+}
+
+async function translateArray(arr) {
+  const results = [];
+  for (const item of arr) {
+    results.push(await translateText(item));
+  }
+  return results;
+}
+
+// Translate the key display fields of a Spoonacular recipe object in-place
+async function translateRezept(rez) {
+  if (!rez.vonApi) return rez;
+
+  // Update loading state in grid while translating
+  const cardEl = document.querySelector(`[data-rezept-id="${rez.id}"]`);
+  if (cardEl) cardEl.style.opacity = '0.55';
+
+  try {
+    const [name, küche] = await translateArray([rez.name, rez.küche]);
+    rez.name  = name;
+    rez.küche = küche;
+  } catch(e) {}
+
+  if (cardEl) cardEl.style.opacity = '';
+  return rez;
+}
+
+// Translate all steps and ingredient names of a detail object
+async function translateDetail(detail) {
+  if (!detail) return detail;
+
+  // Translate steps
+  if (detail.schritte?.length) {
+    detail.schritte = await translateArray(detail.schritte);
+  }
+
+  // Translate ingredient names (only the text before quantities)
+  if (detail.zutaten?.length) {
+    const names = detail.zutaten.map(z => z.name);
+    const translated = await translateArray(names);
+    detail.zutaten = detail.zutaten.map((z, i) => ({ ...z, name: translated[i] }));
+  }
+
+  return detail;
+}
+
+
 async function fetchRezepteBatch() {
   const cache = getCache();
   const today = new Date().toISOString().slice(0,10);
@@ -718,6 +805,12 @@ async function fetchRezepteBatch() {
     spendPoints(2); // conservative estimate
 
     const rezepte = (data.results||[]).map((item,i) => mapSpoonacularToRezept(item, i));
+
+    // Translate names & cuisine to German (sequential, rate-limited internally)
+    showApiLoading(true, 'Übersetze Rezepte ins Deutsche…');
+    for (const r of rezepte) {
+      await translateRezept(r);
+    }
 
     cache.batch = rezepte;
     cache.batchDate = today;
@@ -749,6 +842,10 @@ async function fetchVollRezept(id) {
       tipp: null,
       sourceUrl: data.sourceUrl,
     };
+
+    // Translate steps & ingredient names to German
+    await translateDetail(detail);
+
     cache['detail_'+id] = detail;
     setCache(cache);
     return detail;
@@ -758,16 +855,18 @@ async function fetchVollRezept(id) {
   }
 }
 
-function showApiLoading(show) {
+function showApiLoading(show, msg = 'Lade Rezepte von Spoonacular…') {
   const grid = document.getElementById('rezeptGrid');
   if (!grid) return;
   if (show && !document.getElementById('apiLoader')) {
     const d = document.createElement('div');
     d.id = 'apiLoader';
     d.className = 'api-loading';
-    d.innerHTML = '<div class="spinner"></div><div>Lade Rezepte von Spoonacular…</div>';
+    d.innerHTML = `<div class="spinner"></div><div>${msg}</div>`;
     grid.parentNode.insertBefore(d, grid);
     grid.style.display = 'none';
+  } else if (show && document.getElementById('apiLoader')) {
+    document.querySelector('#apiLoader div:last-child').textContent = msg;
   } else if (!show) {
     const d = document.getElementById('apiLoader');
     if (d) d.remove();
@@ -1058,7 +1157,7 @@ function alleZurListe(){ TAGE.forEach(t=>{if(wochenplan[t])zurEinkaufsliste(woch
 function rezeptGridZeigen(){
   document.getElementById('rezeptGrid').innerHTML=gefilterteRezepte().map(r=>{
     const n=naehrwerte(r);
-    return `<div class="meal-card" onclick="aktuell=REZEPTE.find(x=>x.id===${r.id});ergebnisZeigen(aktuell);window.scrollTo({top:0,behavior:'smooth'});">
+    return `<div class="meal-card" data-rezept-id="${r.id}" onclick="aktuell=REZEPTE.find(x=>x.id===${r.id});ergebnisZeigen(aktuell);window.scrollTo({top:0,behavior:'smooth'});">
       <div class="card-emoji">${r.emoji}</div>
       <div class="card-name">${r.name}${r.vonApi?'<span class="api-source-tag">API</span>':''}</div>
       <div class="card-sub">${r.küche} · ⏱️ ${r.zeit} Min.</div>
@@ -1074,21 +1173,53 @@ function rezeptGridZeigen(){
 // ════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════
+function setApiStatus(icon, text, color='rgba(255,255,255,.1)') {
+  const badge = document.getElementById('apiStatusBadge');
+  const ico   = document.getElementById('apiStatusIcon');
+  const txt   = document.getElementById('apiStatusText');
+  if (!badge) return;
+  badge.style.display = 'flex';
+  badge.style.background = color;
+  ico.textContent  = icon;
+  txt.textContent  = text;
+}
+
 async function init(){
   updateQuotaBadge();
   radZeichnen();
   rezeptGridZeigen();
 
-  // Load API recipes, add to pool
-  const apiRezepte = await fetchRezepteBatch();
-  if(apiRezepte.length){
-    // Merge: don't duplicate IDs
-    const existingIds = new Set(REZEPTE.map(r=>r.id));
-    const neu = apiRezepte.filter(r=>!existingIds.has(r.id));
+  setApiStatus('⏳', 'Lade API-Rezepte…');
+
+  let apiRezepte = [];
+  try {
+    apiRezepte = await fetchRezepteBatch();
+  } catch(e) {
+    console.warn('API fetch error:', e);
+  }
+
+  if (apiRezepte.length) {
+    const existingIds = new Set(REZEPTE.map(r => r.id));
+    const neu = apiRezepte.filter(r => !existingIds.has(r.id));
     REZEPTE = [...REZEPTE, ...neu];
     radZeichnen();
     rezeptGridZeigen();
+    setApiStatus('✅', `+${neu.length} API-Rezepte geladen`, 'rgba(74,140,106,.3)');
+    // Auto-hide after 4s
+    setTimeout(() => {
+      const b = document.getElementById('apiStatusBadge');
+      if (b) b.style.display = 'none';
+    }, 4000);
+  } else {
+    const q = getQuotaState();
+    if (q.left === 0) {
+      setApiStatus('🚫', 'API-Tageslimit erreicht', 'rgba(184,74,42,.3)');
+    } else {
+      setApiStatus('⚠️', 'API nicht erreichbar – eigene Rezepte aktiv', 'rgba(180,140,0,.25)');
+      // Keep visible so user knows why no API recipes show
+    }
   }
+
   updateQuotaBadge();
 }
 
