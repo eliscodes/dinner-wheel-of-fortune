@@ -107,9 +107,11 @@
     .panel { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:1.25rem; box-shadow:0 2px 12px var(--shadow); }
     .panel-title { font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--forest); margin-bottom:1rem; display:flex; align-items:center; justify-content:space-between; }
     .filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; }
-    .fc { background:var(--warm); border:1.5px solid var(--border); color:var(--mid); padding:.45rem .6rem; border-radius:10px; cursor:pointer; font-size:.78rem; font-family:'DM Sans',sans-serif; text-align:center; transition:all .2s; user-select:none; }
+    .fc { background:var(--warm); border:1.5px solid var(--border); color:var(--mid); padding:.45rem .6rem; border-radius:10px; cursor:pointer; font-size:.78rem; font-family:'DM Sans',sans-serif; text-align:center; transition:all .2s; user-select:none; position:relative; }
     .fc.on { background:var(--forest); border-color:var(--forest); color:#fff; font-weight:500; }
-    .fc:hover:not(.on) { border-color:var(--gold); }
+    .fc.on::after { content:'✓'; position:absolute; top:3px; right:5px; font-size:.6rem; opacity:.7; }
+    .fc:hover:not(.on) { border-color:var(--gold); background:var(--warm2); }
+    .filter-hint { font-size:.7rem; color:var(--mid); margin-top:.5rem; opacity:.7; }
     .grocery-empty { font-size:.85rem; color:var(--mid); text-align:center; padding:1.25rem .5rem; line-height:1.6; }
     .store-section-title { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--mid); margin:.65rem 0 .3rem; }
     .grocery-item { display:flex; align-items:center; gap:.5rem; padding:.3rem 0; border-bottom:1px dashed var(--border); font-size:.84rem; }
@@ -253,6 +255,7 @@
         <div class="fc"    onclick="filterWechseln(this,'viel-ballaststoffe')" data-f="viel-ballaststoffe">🌾 Viel Ballaststoffe</div>
         <div class="fc"    onclick="filterWechseln(this,'vegetarisch')"        data-f="vegetarisch">🌿 Vegetarisch</div>
       </div>
+      <div class="filter-hint">Mehrfachauswahl möglich – Filter kombinieren ✓</div>
     </div>
     <div class="panel" style="flex:1">
       <div class="panel-title">
@@ -650,7 +653,7 @@ const REZEPTE = [
 ];
 
 // STATE
-let persona='beide', aktiverFilter='alle', aktuell=null;
+let persona='beide', aktiveFilter=new Set(), aktuell=null;
 let einkaufsListe={}, wochenplan={};
 const TAGE=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
 let winkel=0, drehtSich=false;
@@ -670,10 +673,15 @@ function naehrwerte(r){
   return {kcal:Math.round((r.er.kcal+r.sie.kcal)/2),protein:Math.round((r.er.protein+r.sie.protein)/2),ballaststoffe:Math.round((r.er.ballaststoffe+r.sie.ballaststoffe)/2),fett:Math.round((r.er.fett+r.sie.fett)/2),kh:Math.round((r.er.kh+r.sie.kh)/2)};
 }
 function gefilterteRezepte(){
-  if(aktiverFilter==='alle') return REZEPTE;
-  if(aktiverFilter==='vegetarisch') return REZEPTE.filter(r=>r.vegetarisch);
-  if(aktiverFilter==='schnell') return REZEPTE.filter(r=>r.zeit<30);
-  return REZEPTE.filter(r=>r.tags.includes(aktiverFilter));
+  if(aktiveFilter.size===0) return REZEPTE;
+  return REZEPTE.filter(r=>{
+    for(const f of aktiveFilter){
+      if(f==='vegetarisch' && !r.vegetarisch) return false;
+      if(f==='schnell' && r.zeit>=30) return false;
+      if(f!=='vegetarisch' && f!=='schnell' && !r.tags.includes(f)) return false;
+    }
+    return true;
+  });
 }
 function setPersona(p){
   persona=p;
@@ -681,8 +689,31 @@ function setPersona(p){
   radZeichnen(); rezeptGridZeigen(); if(aktuell) ergebnisZeigen(aktuell);
 }
 function filterWechseln(el,f){
-  document.querySelectorAll('.fc').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on'); aktiverFilter=f; radZeichnen(); rezeptGridZeigen();
+  if(f==='alle'){
+    aktiveFilter.clear();
+    document.querySelectorAll('.fc').forEach(c=>c.classList.remove('on'));
+    document.querySelector('.fc[data-f="alle"]').classList.add('on');
+  } else {
+    // Deactivate "alle"
+    document.querySelector('.fc[data-f="alle"]').classList.remove('on');
+    if(aktiveFilter.has(f)){
+      aktiveFilter.delete(f); el.classList.remove('on');
+      // If nothing left, reactivate "alle"
+      if(aktiveFilter.size===0) document.querySelector('.fc[data-f="alle"]').classList.add('on');
+    } else {
+      aktiveFilter.add(f); el.classList.add('on');
+    }
+  }
+  // Show count badge
+  const count = aktiveFilter.size;
+  const alleEl = document.querySelector('.fc[data-f="alle"]');
+  alleEl.textContent = count>0 ? `🍽️ Alle (${count} aktiv)` : '🍽️ Alle';
+  radZeichnen(); rezeptGridZeigen();
+  // If current result no longer in filtered set, hide it
+  if(aktuell && !gefilterteRezepte().find(r=>r.id===aktuell.id)){
+    document.getElementById('resultCard').classList.remove('show');
+    aktuell=null;
+  }
 }
 
 function radZeichnen(){
@@ -706,25 +737,45 @@ function radZeichnen(){
   ctx.font='18px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🍽️',cx,cx);
 }
 
+// After the wheel stops, read which slice is actually under the pointer.
+// Pointer sits at the TOP = angle 270deg = 3PI/2 when normalised to [0, 2PI).
+function rezeptUnterZeiger(){
+  const rez=gefilterteRezepte();
+  const sw=2*Math.PI/rez.length;
+  const w=((winkel%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  const zeiger=3*Math.PI/2;
+  const rel=((zeiger-w)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+  const idx=Math.floor(rel/sw)%rez.length;
+  return rez[idx];
+}
+
 function drehen(){
   if(drehtSich) return; drehtSich=true; document.getElementById('spinBtn').disabled=true;
-  const rez=gefilterteRezepte(), zi=Math.floor(Math.random()*rez.length);
-  const sw=2*Math.PI/rez.length, zw=-Math.PI/2-(zi*sw+sw/2);
-  const g=(5+Math.random()*5)*2*Math.PI+(zw-winkel%(2*Math.PI));
+  const rez=gefilterteRezepte();
+  const sw=2*Math.PI/rez.length;
+  const zi=Math.floor(Math.random()*rez.length);
+  // Aim for centre of target slice to land under pointer (3PI/2)
+  const winkelFinal=3*Math.PI/2-(zi*sw+sw/2);
+  const w=((winkel%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  const wf=((winkelFinal%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  let diff=wf-w; if(diff<=0) diff+=2*Math.PI;
+  const g=(5+Math.floor(Math.random()*5))*2*Math.PI+diff;
   const d=4200, t0=performance.now(), w0=winkel;
   const ease=t=>1-Math.pow(1-t,4);
   (function f(now){
     const t=Math.min((now-t0)/d,1); winkel=w0+g*ease(t); radZeichnen();
     if(t<1){requestAnimationFrame(f);return;}
     drehtSich=false; document.getElementById('spinBtn').disabled=false;
-    aktuell=rez[zi]; ergebnisZeigen(aktuell);
+    aktuell=rezeptUnterZeiger();
+    ergebnisZeigen(aktuell);
   })(t0);
 }
 
 function ergebnisZeigen(rez){
   const n=naehrwerte(rez);
   const card=document.getElementById('resultCard');
-  card.classList.remove('show'); void card.offsetWidth; card.classList.add('show');
+
+  // 1. Update ALL content while card is hidden (or already visible – doesn't matter)
   document.getElementById('rEmoji').textContent=rez.emoji;
   document.getElementById('rName').textContent=rez.name;
   document.getElementById('rCuisine').textContent=rez.küche;
@@ -744,7 +795,16 @@ function ergebnisZeigen(rez){
   const src=document.getElementById('rSource');
   if(rez.quelle){src.href=rez.quelle;src.textContent=`🔗 ${rez.quelleText}`;src.style.display='inline-flex';}
   else src.style.display='none';
-  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+
+  // 2. NOW trigger animation – content is already correct, no stale flash possible
+  card.classList.remove('show');
+  // Use rAF to guarantee a full repaint cycle before re-adding .show
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      card.classList.add('show');
+      card.scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+  });
 }
 
 function rezeptOeffnen(rez){
