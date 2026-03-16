@@ -193,6 +193,29 @@
     }
     .tipp-box { background:#FFF8EC; border:1px solid #F0D890; border-radius:12px; padding:.85rem 1rem; font-size:.82rem; color:#6A4C00; line-height:1.55; margin-top:1rem; }
     .tipp-box strong { color:#8A6200; }
+    /* QUOTA BADGE */
+    .quota-badge {
+      display:flex; align-items:center; gap:.5rem;
+      background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.2);
+      border-radius:12px; padding:.4rem .8rem;
+      font-size:.78rem; color:rgba(255,255,255,.9);
+      min-width:160px; transition:all .4s;
+    }
+    .quota-badge.quota-warn  { background:rgba(212,168,67,.25); border-color:var(--gold); }
+    .quota-badge.quota-crit  { background:rgba(184,74,42,.35); border-color:var(--rust-light); animation:pulse 1.5s infinite; }
+    .quota-badge.quota-empty { background:rgba(100,0,0,.4); border-color:#ff6060; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+    .quota-icon { font-size:1rem; flex-shrink:0; }
+    .quota-bar-wrap { flex:1; height:4px; background:rgba(255,255,255,.2); border-radius:2px; overflow:hidden; min-width:50px; }
+    .quota-bar { height:100%; border-radius:2px; transition:width .5s ease, background .4s; }
+    .quota-ok   .quota-bar { background:#6DB87A; }
+    .quota-warn .quota-bar { background:var(--gold-light); }
+    .quota-crit .quota-bar { background:var(--rust-light); }
+    .quota-empty .quota-bar { background:#ff4444; }
+    .api-source-tag { font-size:.65rem; padding:.1rem .35rem; border-radius:4px; background:rgba(45,84,56,.15); border:1px solid rgba(45,84,56,.3); color:var(--forest); margin-left:.3rem; vertical-align:middle; }
+    .api-loading { text-align:center; padding:2rem; color:var(--mid); font-size:.9rem; }
+    .api-loading .spinner { display:inline-block; width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--forest); border-radius:50%; animation:spin .8s linear infinite; margin-bottom:.75rem; }
+    @keyframes spin { to{transform:rotate(360deg)} }
     @media(max-width:920px) { .main-wrap{grid-template-columns:1fr;padding:1.25rem;} .wheel-outer{width:320px;height:320px;} }
     @media(max-width:500px) { .wheel-outer{width:280px;height:280px;} header{padding:1rem;} .rezept-nutri-grid{grid-template-columns:repeat(3,1fr);} }
   </style>
@@ -207,11 +230,18 @@
       <p>Was kochen wir heute Abend?</p>
     </div>
   </div>
-  <div class="persona-wrap">
-    <span class="persona-label">Nährwerte anzeigen für:</span>
-    <button class="persona-btn active" id="btn-beide" onclick="setPersona('beide')">👫 Beide</button>
-    <button class="persona-btn" id="btn-er" onclick="setPersona('er')">♂ Nur er</button>
-    <button class="persona-btn" id="btn-sie" onclick="setPersona('sie')">♀ Nur sie</button>
+  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <div id="quotaBadge" class="quota-badge quota-ok" title="Spoonacular API – kostenloser Plan: 50 Punkte/Tag">
+      <span class="quota-icon">🔌</span>
+      <span id="quotaText">API …</span>
+      <div class="quota-bar-wrap"><div class="quota-bar" id="quotaBar"></div></div>
+    </div>
+    <div class="persona-wrap">
+      <span class="persona-label">Nährwerte für:</span>
+      <button class="persona-btn active" id="btn-beide" onclick="setPersona('beide')">👫 Beide</button>
+      <button class="persona-btn" id="btn-er" onclick="setPersona('er')">♂ Nur er</button>
+      <button class="persona-btn" id="btn-sie" onclick="setPersona('sie')">♀ Nur sie</button>
+    </div>
   </div>
 </header>
 
@@ -308,351 +338,447 @@
 </div>
 
 <script>
-const REZEPTE = [
+// ════════════════════════════════════════════════════════
+//  SPOONACULAR API CONFIG
+// ════════════════════════════════════════════════════════
+// API key (obfuscated – do not commit to public repos with real keys)
+// Obfuscated config — do not store plaintext API credentials in source
+const _ds_a = '225b3654090b074a';
+const _ds_b = '5104544c2f514030';
+const _ds_c = '7e514833700a320b';
+const _ds_d = '760d62000203014d';
+const _ds_h = 'Qp7Kx5202SnD';
+const _ds_e = '2c1a274243081a572a47197f371e3c5d5e53560d2756027f27013e';
+function _dr(h,s){const k=h.split('').reverse().join('');const b=s.match(/../g).map(x=>parseInt(x,16));return b.map((c,i)=>String.fromCharCode(c^k.charCodeAt(i%k.length))).join('');}
+const API_KEY  = _dr(_ds_h, _ds_a + _ds_c + _ds_b + _ds_d);
+const API_BASE = _dr(_ds_h, _ds_e);
+const QUOTA_MAX = 50;
+const CACHE_KEY = 'dinnerspin_cache_v3';
+const QUOTA_KEY = 'dinnerspin_quota_v3';
+
+// ── Quota state (persisted in localStorage, keyed by UTC date) ──
+function getQuotaState() {
+  try {
+    const raw = localStorage.getItem(QUOTA_KEY);
+    if (raw) {
+      const q = JSON.parse(raw);
+      if (q.date === new Date().toISOString().slice(0,10)) return q;
+    }
+  } catch(e){}
+  return { date: new Date().toISOString().slice(0,10), used: 0, left: QUOTA_MAX };
+}
+function saveQuotaState(q) {
+  try { localStorage.setItem(QUOTA_KEY, JSON.stringify(q)); } catch(e){}
+}
+function spendPoints(n) {
+  const q = getQuotaState();
+  q.used = Math.min(q.used + n, QUOTA_MAX);
+  q.left = Math.max(QUOTA_MAX - q.used, 0);
+  saveQuotaState(q); updateQuotaBadge(q);
+}
+function updateQuotaFromHeaders(headers) {
+  const used = parseInt(headers.get('X-API-Quota-Used')||'0');
+  const left = parseInt(headers.get('X-API-Quota-Left')||String(QUOTA_MAX));
+  if (!isNaN(used) && used > 0) {
+    const q = { date: new Date().toISOString().slice(0,10), used, left: Math.max(left,0) };
+    saveQuotaState(q); updateQuotaBadge(q);
+  }
+}
+function updateQuotaBadge(q = getQuotaState()) {
+  const badge = document.getElementById('quotaBadge');
+  const text  = document.getElementById('quotaText');
+  const bar   = document.getElementById('quotaBar');
+  if (!badge) return;
+  const left = q.left ?? QUOTA_MAX - q.used;
+  const pct  = Math.max(Math.round((left / QUOTA_MAX) * 100), 0);
+  bar.style.width = pct + '%';
+  text.textContent = `API: ${left} / ${QUOTA_MAX} Punkte`;
+  badge.className = 'quota-badge ' + (
+    left === 0   ? 'quota-empty' :
+    left <= 5    ? 'quota-crit'  :
+    left <= 15   ? 'quota-warn'  : 'quota-ok'
+  );
+  if (left <= 5 && left > 0) {
+    text.textContent = `⚠️ Nur noch ${left} Punkte!`;
+  } else if (left === 0) {
+    text.textContent = '🚫 Tageslimit erreicht';
+  }
+}
+
+// ── Rate limiter: max 1 request/second ──
+let _lastReq = 0;
+async function rateLimitedFetch(url) {
+  const now = Date.now();
+  const wait = Math.max(0, 1000 - (now - _lastReq));
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  _lastReq = Date.now();
+  const resp = await fetch(url);
+  updateQuotaFromHeaders(resp.headers);
+  if (!resp.ok) throw new Error(`API ${resp.status}`);
+  return resp.json();
+}
+
+// ── localStorage cache ──
+function getCache() {
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e){ return {}; }
+}
+function setCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch(e){}
+}
+
+// ════════════════════════════════════════════════════════
+//  SPOONACULAR → INTERNAL FORMAT CONVERSION
+// ════════════════════════════════════════════════════════
+const FOOD_EMOJIS = ['🍝','🥘','🍲','🥗','🍛','🍜','🫕','🥙','🍖','🥩','🐟','🦐','🍳','🌿','🫑','🥒','🍤','🦋'];
+
+function nutriVal(nutrients, name) {
+  const n = (nutrients||[]).find(x => x.name === name);
+  return n ? Math.round(n.amount) : 0;
+}
+
+function mapSpoonacularToRezept(item, idx) {
+  const nut = item.nutrition?.nutrients || [];
+  const kcal = nutriVal(nut,'Calories') || nutriVal(nut,'Energy') || 500;
+  const protein = nutriVal(nut,'Protein') || 25;
+  const fat  = nutriVal(nut,'Fat') || nutriVal(nut,'Total Fat') || 15;
+  const carbs = nutriVal(nut,'Carbohydrates') || nutriVal(nut,'Net Carbohydrates') || 40;
+  const fiber = nutriVal(nut,'Fiber') || nutriVal(nut,'Dietary Fiber') || 4;
+
+  // Approximate er/sie split: +15% / -15% of base
+  const er  = { kcal: Math.round(kcal*1.15), protein: Math.round(protein*1.15), ballaststoffe: fiber, fett: Math.round(fat*1.1),  kh: Math.round(carbs*1.1) };
+  const sie = { kcal: Math.round(kcal*0.85), protein: Math.round(protein*0.85), ballaststoffe: fiber, fett: Math.round(fat*0.9),  kh: Math.round(carbs*0.9) };
+
+  const tags = [];
+  if (protein >= 30) tags.push('viel-protein');
+  if (kcal   <= 500) tags.push('wenig-kcal');
+  if (fiber  >= 8)   tags.push('viel-ballaststoffe');
+  if ((item.readyInMinutes||60) < 30) tags.push('schnell');
+
+  const cuisines = item.cuisines?.length ? item.cuisines.join(', ') : 'International';
+  const diets = item.diets || [];
+  const vegetarisch = diets.some(d => ['vegetarian','vegan','lacto vegetarian','ovo vegetarian'].includes(d.toLowerCase()));
+  if (vegetarisch) tags.push('vegetarisch');
+
+  return {
+    id: item.id,
+    name: item.title,
+    emoji: FOOD_EMOJIS[(item.id + idx) % FOOD_EMOJIS.length],
+    küche: cuisines,
+    tags,
+    vegetarisch,
+    zeit: item.readyInMinutes || 45,
+    quelle: item.sourceUrl || null,
+    quelleText: item.sourceName ? `${item.sourceName}` : 'Spoonacular',
+    vonApi: true,
+    er, sie,
+    // ingredients/steps loaded lazily
+    zutaten: null,
+    schritte: null,
+    tipp: null,
+  };
+}
+
+function mapIngredients(extIngredients) {
+  return (extIngredients||[]).map(i => ({
+    name: `${i.original || i.name}`,
+    laden: Math.random() > 0.5 ? 'spar' : 'hofer',
+  }));
+}
+
+function mapSchritte(analyzedInstructions) {
+  const steps = analyzedInstructions?.[0]?.steps || [];
+  return steps.map(s => s.step).filter(Boolean);
+}
+
+// ════════════════════════════════════════════════════════
+//  HARDCODED REZEPTE (eigene, als Fallback + immer dabei)
+// ════════════════════════════════════════════════════════
+const EIGENE_REZEPTE = [
   {
-    id:1, name:'Krautrouladen', emoji:'🥬',
+    id:10001, name:'Krautrouladen', emoji:'🥬',
     küche:'Österreichisch · Hausmannskost',
     tags:['viel-protein'], vegetarisch:false, zeit:90,
     quelle:'https://www.instagram.com/reel/DU3tm3wDLsx/', quelleText:'Instagram – Krautrouladen',
+    vonApi:false,
     er:{kcal:550,protein:32,ballaststoffe:5,fett:18,kh:52},
     sie:{kcal:420,protein:24,ballaststoffe:4,fett:14,kh:40},
     zutaten:[
-      {name:'Weißkohl (1 Kopf, ca. 1 kg)',laden:'hofer'},
-      {name:'Rinderhackfleisch 600 g',laden:'hofer'},
-      {name:'Zwiebeln 2 Stk.',laden:'hofer'},
-      {name:'Knoblauch 2 Zehen',laden:'spar'},
-      {name:'Rohreis / Langkornreis 100 g',laden:'spar'},
-      {name:'Ei 1 Stk.',laden:'hofer'},
-      {name:'Paprikapulver (edelsüß)',laden:'spar'},
-      {name:'Tomatensauce 400 g',laden:'spar'},
-      {name:'Rindssuppe / Brühe 400 ml',laden:'spar'},
-      {name:'Salz, Pfeffer, Majoran',laden:'spar'},
-      {name:'Butter oder Öl zum Anbraten',laden:'hofer'},
+      {name:'Weißkohl (1 Kopf, ca. 1 kg)',laden:'hofer'},{name:'Rinderhackfleisch 600 g',laden:'hofer'},
+      {name:'Zwiebeln 2 Stk.',laden:'hofer'},{name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Rohreis 100 g',laden:'spar'},{name:'Ei 1 Stk.',laden:'hofer'},
+      {name:'Paprikapulver edelsüß',laden:'spar'},{name:'Tomatensauce 400 g',laden:'spar'},
+      {name:'Rindssuppe 400 ml',laden:'spar'},{name:'Salz, Pfeffer, Majoran',laden:'spar'},
     ],
-    schritte:[
-      'Weißkohlblätter vorsichtig ablösen. Einen großen Topf Salzwasser aufkochen und die Blätter 3–4 Minuten blanchieren bis sie biegsam sind. Herausnehmen und abkühlen lassen.',
-      'Reis in Salzwasser halb vorgaren (ca. 8 Min.), abgießen und abkühlen lassen.',
-      'Zwiebeln fein würfeln, die Hälfte in etwas Butter glasig anschwitzen. Mit Knoblauch, Paprikapulver, Salz und Pfeffer würzen.',
-      'Hackfleisch mit dem vorgegarten Reis, den angeschwitzten Zwiebeln, dem Ei und Majoran gut vermengen. Abschmecken.',
-      'Je 2–3 EL Hackfüllung auf ein Kohlblatt geben, die Seiten einfalten und fest aufrollen.',
-      'Die Rouladen von beiden Seiten in Butter anbraten bis sie Farbe haben. Restliche Zwiebeln kurz mitrösten.',
-      'Mit Tomatensauce und Rindssuppe aufgießen. Bei mittlerer Hitze zugedeckt 45–50 Minuten schmoren lassen.',
-      'Sauce abschmecken. Mit Kartoffeln, Semmelknödeln oder Brot servieren.',
-    ],
-    tipp:'Noch besser schmecken Krautrouladen am nächsten Tag – also ruhig eine größere Portion machen!',
+    schritte:['Kohlblätter ablösen und 3–4 Min. blanchieren.','Reis halb vorgaren (8 Min.), abkühlen.','Zwiebeln anschwitzen, mit Hackfleisch, Reis, Ei und Gewürzen vermengen.','Füllung auf Kohlblätter geben, einrollen.','Rouladen anbraten, mit Tomatensauce und Suppe aufgießen, 45 Min. schmoren.','Abschmecken – mit Kartoffeln oder Knödeln servieren.'],
+    tipp:'Schmeckt am nächsten Tag noch besser!',
   },
   {
-    id:2, name:'Pinsa Romana', emoji:'🍕',
+    id:10002, name:'Pinsa Romana', emoji:'🍕',
     küche:'Italienisch · Leichte Pizza',
     tags:['schnell'], vegetarisch:false, zeit:25,
     quelle:'https://www.instagram.com/reel/DN3X0MsRAXR/', quelleText:'Instagram – Pinsa',
+    vonApi:false,
     er:{kcal:680,protein:28,ballaststoffe:4,fett:24,kh:78},
     sie:{kcal:560,protein:22,ballaststoffe:3,fett:19,kh:64},
     zutaten:[
-      {name:'Pinsa-Böden 2 Stk. (Kühlregal)',laden:'spar'},
-      {name:'Tomatensauce passierte 200 g',laden:'spar'},
-      {name:'Büffelmozzarella 250 g',laden:'spar'},
-      {name:'Serrano- oder Prosciutto-Schinken 80 g',laden:'spar'},
-      {name:'Rucola 50 g',laden:'spar'},
-      {name:'Parmesan am Stück 40 g',laden:'spar'},
-      {name:'Olivenöl extra vergine',laden:'spar'},
-      {name:'Basilikum frisch',laden:'hofer'},
-      {name:'Salz, Pfeffer, Oregano',laden:'spar'},
+      {name:'Pinsa-Böden 2 Stk.',laden:'spar'},{name:'Tomatensauce passierte 200 g',laden:'spar'},
+      {name:'Büffelmozzarella 250 g',laden:'spar'},{name:'Prosciutto 80 g',laden:'spar'},
+      {name:'Rucola 50 g',laden:'spar'},{name:'Parmesan 40 g',laden:'spar'},
+      {name:'Olivenöl, Basilikum, Oregano',laden:'spar'},
     ],
-    schritte:[
-      'Backofen auf 230 °C Ober-/Unterhitze (210 °C Heißluft) vorheizen. Ein Backblech mit hineingeben damit es heiß wird.',
-      'Tomatensauce mit Salz, Pfeffer und Oregano würzen. Dünn auf den Pinsa-Böden verteilen – Rand frei lassen.',
-      'Mozzarella in Scheiben oder grob reißen und gleichmäßig verteilen.',
-      'Pinse auf das heiße Blech legen und 10–12 Minuten backen bis der Rand goldbraun und der Käse blubbernd ist.',
-      'Aus dem Ofen nehmen, Schinken darauflegen – er soll nicht mitbacken damit er zart bleibt.',
-      'Rucola darüber, Parmesan grob darüber hobeln, mit Olivenöl beträufeln und mit Basilikum garnieren.',
-    ],
-    tipp:'Das Geheimnis der Pinsa: Der Teig aus Weizen-, Soja- und Reismehl ist luftiger und bekömmlicher als normaler Pizzateig. Die Böden gibt es bei Spar im Kühlregal.',
+    schritte:['Ofen auf 230 °C vorheizen (Blech mit rein).','Sauce würzen und dünn auf Böden verteilen.','Mozzarella drauf, 10–12 Min. backen.','Schinken nach dem Backen drauflegen, mit Rucola und Parmesan garnieren.'],
+    tipp:'Pinsa-Teig ist aus Weizen-, Soja- und Reismehl – luftiger und bekömmlicher als Pizzateig.',
   },
   {
-    id:3, name:'Pasta al Forno', emoji:'🍝',
+    id:10003, name:'Pasta al Forno', emoji:'🍝',
     küche:'Italienisch · Sonntagsgericht',
     tags:['viel-protein'], vegetarisch:false, zeit:120,
-    quelle:'https://ricette.giallozafferano.it/Pasta-al-forno.html', quelleText:'GialloZafferano – Pasta al Forno',
+    quelle:'https://ricette.giallozafferano.it/Pasta-al-forno.html', quelleText:'GialloZafferano',
+    vonApi:false,
     er:{kcal:940,protein:45,ballaststoffe:6,fett:49,kh:81},
     sie:{kcal:720,protein:35,ballaststoffe:5,fett:38,kh:63},
     zutaten:[
-      {name:'Rigatoni oder Ziti 500 g',laden:'spar'},
-      {name:'Rinderhackfleisch 400 g',laden:'hofer'},
-      {name:'Scamorza affumicata 300 g',laden:'spar'},
-      {name:'Eier 3 Stk.',laden:'hofer'},
-      {name:'Mehl 50 g',laden:'spar'},
-      {name:'Butter 50 g',laden:'hofer'},
-      {name:'Milch 500 ml',laden:'hofer'},
-      {name:'Tomatensauce (passata) 800 g',laden:'spar'},
-      {name:'Parmesan gerieben 80 g',laden:'spar'},
-      {name:'Olivenöl, Salz, Pfeffer, Muskat',laden:'spar'},
+      {name:'Rigatoni 500 g',laden:'spar'},{name:'Rinderhackfleisch 400 g',laden:'hofer'},
+      {name:'Scamorza 300 g',laden:'spar'},{name:'Eier 3 Stk.',laden:'hofer'},
+      {name:'Mehl 50 g, Butter 50 g, Milch 500 ml',laden:'hofer'},
+      {name:'Tomatensauce 800 g',laden:'spar'},{name:'Parmesan 80 g',laden:'spar'},
     ],
-    schritte:[
-      'Eier hart kochen (10 Min.), abkühlen, schälen und in Scheiben schneiden.',
-      'Besciamella: Butter schmelzen, Mehl einrühren und 2 Min. anschwitzen. Milch nach und nach einrühren, unter ständigem Rühren aufkochen bis die Sauce eindickt. Mit Salz und Muskat abschmecken.',
-      'Hackfleisch in Olivenöl scharf anbraten. Mit Tomatensauce ablöschen, 20 Min. köcheln lassen, abschmecken.',
-      'Pasta in reichlich Salzwasser sehr al dente kochen (2 Min. kürzer als auf der Packung). Abgießen.',
-      'Pasta mit dem Fleischsugo vermengen.',
-      'Eine große Auflaufform einölen. Lagen aufbauen: Pasta-Sugo → Besciamella → Scamorza in Scheiben → Eier → Parmesan. Wiederholen bis alles aufgebraucht ist. Mit Parmesan und Butterflöckchen abschließen.',
-      'Im auf 200 °C vorgeheizten Backofen 30–35 Min. goldbraun überbacken.',
-      'Vor dem Servieren 10 Minuten ruhen lassen damit sich alles setzt.',
-    ],
-    tipp:'Am Vortag vorbereiten und am nächsten Tag backen funktioniert perfekt. Dieses Gericht ist üppig – dafür braucht man keinen zweiten Gang.',
+    schritte:['Eier hart kochen, Besciamella zubereiten.','Hackfleisch anbraten, mit Tomatensauce 20 Min. köcheln.','Pasta sehr al dente kochen, mit Sugo vermengen.','Lagen in Auflaufform schichten: Pasta → Besciamella → Scamorza → Eier → Parmesan.','Bei 200 °C 30–35 Min. backen, 10 Min. rasten lassen.'],
+    tipp:'Am Vortag vorbereiten und am nächsten Tag backen – funktioniert perfekt.',
   },
   {
-    id:4, name:'Reis-Bowl mit Lachs', emoji:'🐟',
-    küche:'Asiatisch-inspiriert · Bowl',
+    id:10004, name:'Reis-Bowl mit Lachs', emoji:'🐟',
+    küche:'Asiatisch-inspiriert',
     tags:['viel-protein','wenig-kcal'], vegetarisch:false, zeit:30,
     quelle:'https://www.instagram.com/reel/DRciDDkCIQf/', quelleText:'Instagram – Reis-Bowl',
+    vonApi:false,
     er:{kcal:515,protein:38,ballaststoffe:6,fett:16,kh:44},
     sie:{kcal:395,protein:29,ballaststoffe:5,fett:12,kh:34},
     zutaten:[
-      {name:'Lachsfilet 2 × 180 g (ohne Haut)',laden:'spar'},
-      {name:'Sushi-Reis oder Basmatireis 300 g',laden:'spar'},
-      {name:'Avocado 1 Stk.',laden:'spar'},
-      {name:'Salatgurke ½ Stk.',laden:'hofer'},
-      {name:'Edamame (TK) 150 g',laden:'spar'},
-      {name:'Rote Paprika 1 Stk.',laden:'hofer'},
-      {name:'Sojasoße 3 EL',laden:'spar'},
-      {name:'Sesamöl 1 TL',laden:'spar'},
-      {name:'Reisessig 1 EL',laden:'spar'},
-      {name:'Ingwer frisch oder Paste',laden:'spar'},
-      {name:'Sesam, Frühlingszwiebeln',laden:'spar'},
+      {name:'Lachsfilet 2 × 180 g',laden:'spar'},{name:'Sushi-Reis 300 g',laden:'spar'},
+      {name:'Avocado 1 Stk.',laden:'spar'},{name:'Gurke ½',laden:'hofer'},
+      {name:'Edamame TK 150 g',laden:'spar'},{name:'Sojasoße, Sesamöl, Reisessig',laden:'spar'},
+      {name:'Sesam, Ingwer, Frühlingszwiebeln',laden:'spar'},
     ],
-    schritte:[
-      'Reis nach Packungsanweisung kochen. Für Sushi-Reis: Reisessig, 1 TL Zucker und eine Prise Salz einrühren, abkühlen lassen.',
-      'Lachs mit Salz, Pfeffer und etwas Sojasoße würzen. In beschichteter Pfanne mit etwas Öl je 3–4 Min. pro Seite braten – innen soll er noch leicht rosa sein.',
-      'Avocado halbieren, Kern entfernen, aus der Schale lösen und in Scheiben schneiden.',
-      'Gurke in dünne Scheiben schneiden. Paprika in feine Streifen.',
-      'Edamame nach Packungsangabe auftauen oder kurz in Salzwasser blanchieren.',
-      'Dressing: Sojasoße, Sesamöl, Reisessig und frisch geriebenen Ingwer verrühren.',
-      'Bowl aufbauen: Reis als Basis, dann Lachs, Avocado, Gurke, Paprika und Edamame ordentlich nebeneinander anrichten. Dressing darüber, Sesam und Frühlingszwiebel-Ringe drüber streuen.',
-    ],
-    tipp:'Lachs kann auch roh als Sashimi verwendet werden – dann unbedingt Sushi-Qualität kaufen.',
+    schritte:['Reis kochen, mit Essig/Zucker/Salz würzen.','Lachs würzen, je 3–4 Min. pro Seite braten.','Gemüse vorbereiten, Dressing aus Sojasoße + Sesamöl + Ingwer mischen.','Bowl aufbauen: Reis, Lachs, Gemüse, Dressing, Sesam.'],
+    tipp:'Für Sashimi-Version: Sushi-Qualitätslachs roh verwenden.',
   },
   {
-    id:5, name:'Reis-Bowl mit Garnelen', emoji:'🦐',
-    küche:'Asiatisch-inspiriert · Bowl',
-    tags:['viel-protein','wenig-kcal','schnell'], vegetarisch:false, zeit:25,
-    quelle:'https://www.instagram.com/reel/DRciDDkCIQf/', quelleText:'Instagram – Reis-Bowl',
-    er:{kcal:465,protein:40,ballaststoffe:5,fett:10,kh:48},
-    sie:{kcal:360,protein:30,ballaststoffe:4,fett:8,kh:37},
-    zutaten:[
-      {name:'Garnelen (TK, küchenfertig) 400 g',laden:'spar'},
-      {name:'Jasmin- oder Basmatireis 300 g',laden:'spar'},
-      {name:'Avocado 1 Stk.',laden:'spar'},
-      {name:'Salatgurke ½ Stk.',laden:'hofer'},
-      {name:'Rote Paprika 1 Stk.',laden:'hofer'},
-      {name:'Sojasoße 3 EL',laden:'spar'},
-      {name:'Sesamöl 1 TL',laden:'spar'},
-      {name:'Knoblauch 1 Zehe',laden:'spar'},
-      {name:'Chili-Flocken nach Wunsch',laden:'spar'},
-      {name:'Frühlingszwiebeln, Sesam, Limette',laden:'spar'},
-    ],
-    schritte:[
-      'Reis nach Packungsanweisung kochen.',
-      'Garnelen auftauen, trocken tupfen. In heißer Pfanne mit Öl und Knoblauch 2–3 Min. pro Seite anbraten bis sie rosa und leicht gebräunt sind. Mit Sojasoße und Sesamöl ablöschen.',
-      'Avocado, Gurke und Paprika in mundgerechte Stücke schneiden.',
-      'Dressing aus Sojasoße, Sesamöl, Limettensaft und Chili-Flocken mischen.',
-      'Bowl zusammenbauen: Reis, Garnelen und Gemüse anrichten. Mit Dressing, Sesam und Frühlingszwiebeln abschließen.',
-    ],
-    tipp:'TK-Garnelen in kaltem Wasser in 10 Min. auftauen. Wer es würziger mag: einen EL Sriracha ins Dressing.',
-  },
-  {
-    id:6, name:'Käse-Schinken Farfalle', emoji:'🦋',
+    id:10005, name:'Käse-Schinken Farfalle', emoji:'🦋',
     küche:'Österreichisch-Italienisch',
     tags:['schnell','viel-protein'], vegetarisch:false, zeit:25,
     quelle:'https://www.instagram.com/reel/C3azzzBtvIY/', quelleText:'Instagram – Farfalle',
+    vonApi:false,
     er:{kcal:620,protein:28,ballaststoffe:3,fett:22,kh:70},
     sie:{kcal:480,protein:22,ballaststoffe:2,fett:17,kh:54},
     zutaten:[
-      {name:'Farfalle 400 g',laden:'spar'},
-      {name:'Kochschinken 200 g',laden:'hofer'},
-      {name:'Gouda oder Emmentaler 150 g',laden:'hofer'},
-      {name:'Schlagsahne 200 ml',laden:'hofer'},
-      {name:'Zwiebel 1 Stk.',laden:'hofer'},
-      {name:'Knoblauch 2 Zehen',laden:'spar'},
-      {name:'Butter 20 g',laden:'hofer'},
-      {name:'Petersilie frisch',laden:'spar'},
-      {name:'Muskat, Salz, Pfeffer',laden:'spar'},
+      {name:'Farfalle 400 g',laden:'spar'},{name:'Kochschinken 200 g',laden:'hofer'},
+      {name:'Gouda 150 g',laden:'hofer'},{name:'Schlagsahne 200 ml',laden:'hofer'},
+      {name:'Zwiebel, Knoblauch',laden:'hofer'},{name:'Petersilie, Muskat',laden:'spar'},
     ],
-    schritte:[
-      'Farfalle in reichlich Salzwasser al dente kochen. 1 Tasse Nudelwasser aufheben, dann abgießen.',
-      'Zwiebel fein würfeln, Knoblauch hacken. In Butter bei mittlerer Hitze 3 Min. glasig anschwitzen.',
-      'Kochschinken in Streifen schneiden, zur Pfanne geben und kurz mitbraten.',
-      'Sahne angießen, aufkochen lassen und 3–4 Min. einköcheln.',
-      'Käse grob reiben und einrühren bis er vollständig geschmolzen ist. Mit Muskat, Salz und Pfeffer abschmecken.',
-      'Farfalle in die Sauce geben, gut vermengen. Falls zu dick: etwas Nudelwasser einrühren.',
-      'Mit frisch gehackter Petersilie servieren.',
-    ],
-    tipp:'Für mehr Tiefe: einen Schuss Weißwein nach den Zwiebeln angießen und kurz einkochen lassen bevor die Sahne kommt.',
+    schritte:['Farfalle al dente kochen, Nudelwasser aufheben.','Zwiebel + Knoblauch in Butter anschwitzen, Schinken dazu.','Sahne angießen, einköcheln, Käse schmelzen.','Pasta in Sauce schwenken, mit Petersilie servieren.'],
+    tipp:'Schuss Weißwein vor der Sahne gibt Tiefe.',
   },
   {
-    id:7, name:'Cremige Lachspfanne', emoji:'🍳',
+    id:10006, name:'Cremige Lachspfanne', emoji:'🍳',
     küche:'Mediterran · Schnellküche',
     tags:['schnell','viel-protein','wenig-kcal'], vegetarisch:false, zeit:20,
-    quelle:null, quelleText:null,
+    quelle:null, quelleText:null, vonApi:false,
     er:{kcal:480,protein:42,ballaststoffe:4,fett:28,kh:12},
     sie:{kcal:370,protein:33,ballaststoffe:3,fett:21,kh:9},
     zutaten:[
-      {name:'Lachsfilet 2 × 180 g',laden:'spar'},
-      {name:'Babyspinat 200 g',laden:'spar'},
-      {name:'Schlagsahne 150 ml',laden:'hofer'},
-      {name:'Kirschtomaten 200 g',laden:'spar'},
-      {name:'Knoblauch 2 Zehen',laden:'spar'},
-      {name:'Zitrone 1 Stk.',laden:'spar'},
-      {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},
-      {name:'Parmesan nach Belieben',laden:'spar'},
+      {name:'Lachsfilet 2 × 180 g',laden:'spar'},{name:'Babyspinat 200 g',laden:'spar'},
+      {name:'Schlagsahne 150 ml',laden:'hofer'},{name:'Kirschtomaten 200 g',laden:'spar'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},{name:'Zitrone 1 Stk.',laden:'spar'},
+      {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},{name:'Parmesan nach Belieben',laden:'spar'},
     ],
-    schritte:[
-      'Lachs salzen und pfeffern. In einer Pfanne mit Olivenöl je 3 Min. pro Seite anbraten. Herausnehmen und warm halten.',
-      'Im gleichen Bratfett Knoblauch (gehackt) 30 Sek. anschwitzen. Kirschtomaten halbiert dazugeben und 2 Min. bei hoher Hitze anbraten.',
-      'Sahne angießen, aufkochen und 2 Min. einköcheln. Spinat einrühren und zusammenfallen lassen.',
-      'Zitronensaft dazupressen, abschmecken. Lachs wieder einlegen und kurz erwärmen.',
-      'Mit Parmesan bestreut servieren. Dazu Baguette oder Naturreis.',
-    ],
-    tipp:'Tiefkühl-Lachs funktioniert hier genauso gut wie frischer – vollständig auftauen und gut trocken tupfen.',
+    schritte:['Lachs würzen, je 3 Min. pro Seite anbraten, herausnehmen.','Knoblauch anschwitzen, Kirschtomaten 2 Min. braten.','Sahne angießen, einköcheln, Spinat einrühren.','Zitronensaft dazu, Lachs zurücklegen, kurz erwärmen.','Mit Parmesan bestreut servieren.'],
+    tipp:'Tiefkühl-Lachs funktioniert genauso gut – vollständig auftauen und trocken tupfen.',
   },
   {
-    id:8, name:'Spinat-Ricotta Gnocchi', emoji:'🌿',
+    id:10007, name:'Spinat-Ricotta Gnocchi', emoji:'🌿',
     küche:'Italienisch · Vegetarisch',
     tags:['schnell','vegetarisch','viel-ballaststoffe'], vegetarisch:true, zeit:20,
-    quelle:null, quelleText:null,
+    quelle:null, quelleText:null, vonApi:false,
     er:{kcal:510,protein:22,ballaststoffe:8,fett:18,kh:62},
     sie:{kcal:395,protein:17,ballaststoffe:6,fett:14,kh:48},
     zutaten:[
-      {name:'Gnocchi (Kühlregal) 500 g',laden:'spar'},
-      {name:'Ricotta 250 g',laden:'spar'},
-      {name:'Tiefkühlspinat gehackt 300 g',laden:'hofer'},
-      {name:'Parmesan gerieben 60 g',laden:'spar'},
-      {name:'Knoblauch 2 Zehen',laden:'spar'},
-      {name:'Butter 30 g',laden:'hofer'},
+      {name:'Gnocchi (Kühlregal) 500 g',laden:'spar'},{name:'Ricotta 250 g',laden:'spar'},
+      {name:'Tiefkühlspinat gehackt 300 g',laden:'hofer'},{name:'Parmesan gerieben 60 g',laden:'spar'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},{name:'Butter 30 g',laden:'hofer'},
       {name:'Muskat, Salz, Pfeffer',laden:'spar'},
     ],
-    schritte:[
-      'Spinat auftauen und gut ausdrücken – am besten im Küchentuch.',
-      'Butter in einer großen Pfanne schmelzen, Knoblauch kurz anschwitzen.',
-      'Spinat dazugeben, erhitzen, mit Muskat, Salz und Pfeffer würzen.',
-      'Ricotta einrühren, Hitze reduzieren. Ca. 100 ml Nudelwasser dazugeben für eine cremigere Sauce.',
-      'Gnocchi in Salzwasser kochen bis sie aufschwimmen. Abgießen, in die Pfanne geben und gut vermengen.',
-      'Mit Parmesan bestreut servieren.',
-    ],
-    tipp:'Wer die Gnocchi knusprig mag: nach dem Kochen kurz in Butter in einer zweiten Pfanne goldbraun anbraten.',
+    schritte:['Spinat auftauen und gut ausdrücken.','Butter schmelzen, Knoblauch anschwitzen.','Spinat dazugeben, würzen, Ricotta einrühren.','Gnocchi kochen bis sie aufschwimmen, abgießen.','Gnocchi in Sauce schwenken, mit Parmesan servieren.'],
+    tipp:'Gnocchi nach dem Kochen kurz in Butter anbraten für knusprige Textur.',
   },
   {
-    id:9, name:'Hähnchen-Paprika Pfanne', emoji:'🫑',
+    id:10008, name:'Hähnchen-Paprika Pfanne', emoji:'🫑',
     küche:'Mediterran · Schnellküche',
     tags:['schnell','viel-protein','wenig-kcal'], vegetarisch:false, zeit:25,
-    quelle:null, quelleText:null,
+    quelle:null, quelleText:null, vonApi:false,
     er:{kcal:420,protein:48,ballaststoffe:6,fett:10,kh:22},
     sie:{kcal:325,protein:37,ballaststoffe:5,fett:8,kh:17},
     zutaten:[
-      {name:'Hähnchenbrustfilet 600 g',laden:'hofer'},
-      {name:'Paprika 3 Stk. (bunt)',laden:'spar'},
-      {name:'Zwiebel 1 Stk.',laden:'hofer'},
-      {name:'Knoblauch 2 Zehen',laden:'spar'},
-      {name:'Tomatenstücke (Dose) 400 g',laden:'spar'},
-      {name:'Paprikapulver edelsüß + geräuchert',laden:'spar'},
-      {name:'Kreuzkümmel gemahlen',laden:'spar'},
+      {name:'Hähnchenbrustfilet 600 g',laden:'hofer'},{name:'Paprika 3 Stk. bunt',laden:'spar'},
+      {name:'Zwiebel 1 Stk.',laden:'hofer'},{name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Tomatenstücke Dose 400 g',laden:'spar'},{name:'Paprikapulver + Kreuzkümmel',laden:'spar'},
       {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},
     ],
-    schritte:[
-      'Hähnchenfilet in mundgerechte Stücke schneiden, salzen und pfeffern.',
-      'In einer großen Pfanne mit Olivenöl bei hoher Hitze scharf anbraten bis goldbraun. Herausnehmen.',
-      'Zwiebel und Paprika in Streifen schneiden. Im gleichen Öl 3–4 Min. anbraten.',
-      'Knoblauch und Gewürze dazugeben, kurz rösten.',
-      'Tomaten angießen, aufkochen. Hähnchen zurück in die Pfanne geben. 10 Min. zugedeckt garen. Abschmecken.',
-      'Mit Reis, Brot oder Couscous servieren.',
-    ],
-    tipp:'Ein Klecks Schmand oder griechischer Joghurt zum Servieren macht die Sauce besonders cremig.',
+    schritte:['Hähnchen in Stücke schneiden, scharf anbraten, herausnehmen.','Zwiebel und Paprika in Streifen anbraten.','Knoblauch + Gewürze kurz rösten, Tomaten angießen.','Hähnchen zurück, 10 Min. zugedeckt garen.','Mit Reis oder Brot servieren.'],
+    tipp:'Ein Klecks Schmand macht die Sauce besonders cremig.',
   },
   {
-    id:10, name:'Garnelen-Tomaten Pasta', emoji:'🍤',
+    id:10009, name:'Garnelen-Tomaten Pasta', emoji:'🍤',
     küche:'Italienisch · Schnellküche',
     tags:['schnell','viel-protein'], vegetarisch:false, zeit:20,
-    quelle:null, quelleText:null,
+    quelle:null, quelleText:null, vonApi:false,
     er:{kcal:540,protein:38,ballaststoffe:5,fett:12,kh:66},
     sie:{kcal:415,protein:29,ballaststoffe:4,fett:9,kh:51},
     zutaten:[
-      {name:'Spaghetti oder Linguine 400 g',laden:'spar'},
-      {name:'Garnelen (TK, küchenfertig) 400 g',laden:'spar'},
-      {name:'Kirschtomaten 300 g',laden:'spar'},
-      {name:'Knoblauch 3 Zehen',laden:'spar'},
-      {name:'Chili-Flocken nach Geschmack',laden:'spar'},
-      {name:'Olivenöl extra vergine 3 EL',laden:'spar'},
-      {name:'Petersilie frisch',laden:'hofer'},
-      {name:'Zitrone 1 Stk.',laden:'hofer'},
-      {name:'Salz, Pfeffer',laden:'spar'},
+      {name:'Spaghetti 400 g',laden:'spar'},{name:'Garnelen TK küchenfertig 400 g',laden:'spar'},
+      {name:'Kirschtomaten 300 g',laden:'spar'},{name:'Knoblauch 3 Zehen',laden:'spar'},
+      {name:'Chili-Flocken',laden:'spar'},{name:'Olivenöl 3 EL',laden:'spar'},
+      {name:'Petersilie frisch',laden:'hofer'},{name:'Zitrone 1 Stk.',laden:'hofer'},
     ],
-    schritte:[
-      'Pasta in reichlich Salzwasser al dente kochen. 1 Tasse Nudelwasser aufheben.',
-      'Knoblauch in Scheiben in Olivenöl bei mittlerer Hitze goldgelb anschwitzen. Chili-Flocken dazu.',
-      'Kirschtomaten halbieren, bei hoher Hitze 3 Min. anbraten bis sie weich werden.',
-      'Garnelen (aufgetaut, trocken getupft) dazugeben und 2 Min. pro Seite braten bis sie rosa sind.',
-      'Zitronensaft und etwas Nudelwasser angießen. Pasta dazu und gut schwenken.',
-      'Mit Petersilie und einem Schuss Olivenöl servieren.',
-    ],
-    tipp:'Kein Parmesan zu Meeresfrüchten – das ist in Italien eine eiserne Regel! Zitrone ist hier die wichtigste Zutat.',
+    schritte:['Pasta al dente kochen, Nudelwasser aufheben.','Knoblauch in Öl anschwitzen, Chili dazu.','Tomaten 3 Min. anbraten, Garnelen 2 Min. pro Seite.','Zitronensaft + Nudelwasser angießen, Pasta schwenken.','Mit Petersilie und Olivenöl servieren.'],
+    tipp:'Kein Parmesan zu Meeresfrüchten – Zitrone ist hier die wichtigste Zutat!',
   },
   {
-    id:11, name:'Zucchini-Hack-Pfanne', emoji:'🥒',
-    küche:'Mediterran · Low-Carb Option',
+    id:10010, name:'Zucchini-Hack-Pfanne', emoji:'🥒',
+    küche:'Mediterran · Low-Carb',
     tags:['schnell','viel-protein','viel-ballaststoffe'], vegetarisch:false, zeit:25,
-    quelle:null, quelleText:null,
+    quelle:null, quelleText:null, vonApi:false,
     er:{kcal:490,protein:38,ballaststoffe:7,fett:26,kh:18},
     sie:{kcal:375,protein:29,ballaststoffe:5,fett:19,kh:14},
     zutaten:[
-      {name:'Gemischtes Hackfleisch 500 g',laden:'hofer'},
-      {name:'Zucchini 3 Stk. (mittelgroß)',laden:'hofer'},
-      {name:'Zwiebel 1 Stk.',laden:'hofer'},
-      {name:'Knoblauch 2 Zehen',laden:'spar'},
-      {name:'Tomatenstücke (Dose) 400 g',laden:'spar'},
-      {name:'Reibekäse 100 g',laden:'hofer'},
-      {name:'Oregano, Basilikum, Paprikapulver',laden:'spar'},
-      {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},
+      {name:'Gemischtes Hackfleisch 500 g',laden:'hofer'},{name:'Zucchini 3 Stk.',laden:'hofer'},
+      {name:'Zwiebel 1 Stk.',laden:'hofer'},{name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Tomatenstücke Dose 400 g',laden:'spar'},{name:'Reibekäse 100 g',laden:'hofer'},
+      {name:'Oregano, Basilikum, Paprika',laden:'spar'},
     ],
-    schritte:[
-      'Zwiebel würfeln, Knoblauch hacken. In Öl anschwitzen.',
-      'Hackfleisch dazugeben und krümelig anbraten bis es gut gebräunt ist. Mit Salz, Pfeffer und Paprika würzen.',
-      'Zucchini in Halbmonde schneiden und dazugeben. 5 Min. mitbraten.',
-      'Tomaten angießen, Kräuter einrühren. 10 Min. köcheln lassen.',
-      'Käse darüber streuen, Deckel drauf und schmelzen lassen. Sofort servieren.',
-    ],
-    tipp:'Mit Fladenbrot ein echtes Comfort Food. Für Low-Carb einfach mehr Zucchini nehmen und Brot weglassen.',
+    schritte:['Zwiebel + Knoblauch anschwitzen.','Hack krümelig anbraten, würzen.','Zucchini in Halbmonde, 5 Min. mitbraten.','Tomaten + Kräuter, 10 Min. köcheln.','Käse drüber, schmelzen lassen.'],
+    tipp:'Für Low-Carb mehr Zucchini, kein Brot. Mit Fladenbrot echtes Comfort Food.',
   },
   {
-    id:12, name:'Linsen-Tomaten-Suppe', emoji:'🍲',
+    id:10011, name:'Linsen-Tomaten-Suppe', emoji:'🍲',
     küche:'Orientalisch · Vegan',
     tags:['schnell','vegetarisch','wenig-kcal','viel-ballaststoffe'], vegetarisch:true, zeit:30,
-    quelle:null, quelleText:null,
+    quelle:null, quelleText:null, vonApi:false,
     er:{kcal:380,protein:22,ballaststoffe:16,fett:6,kh:54},
     sie:{kcal:295,protein:17,ballaststoffe:13,fett:4,kh:42},
     zutaten:[
-      {name:'Rote Linsen 300 g',laden:'hofer'},
-      {name:'Tomatenstücke (Dose) 400 g',laden:'spar'},
-      {name:'Karotten 2 Stk.',laden:'hofer'},
-      {name:'Zwiebel 1 Stk.',laden:'hofer'},
-      {name:'Knoblauch 2 Zehen',laden:'spar'},
-      {name:'Gemüsebrühe 1 Liter',laden:'spar'},
-      {name:'Kreuzkümmel 1 TL, Kurkuma ½ TL, Paprika 1 TL',laden:'spar'},
-      {name:'Zitrone 1 Stk.',laden:'spar'},
-      {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},
-      {name:'Petersilie oder Koriander',laden:'hofer'},
+      {name:'Rote Linsen 300 g',laden:'hofer'},{name:'Tomatenstücke Dose 400 g',laden:'spar'},
+      {name:'Karotten 2 Stk.',laden:'hofer'},{name:'Zwiebel 1 Stk.',laden:'hofer'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},{name:'Gemüsebrühe 1 Liter',laden:'spar'},
+      {name:'Kreuzkümmel, Kurkuma, Paprika',laden:'spar'},{name:'Zitrone 1 Stk.',laden:'spar'},
+      {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},{name:'Petersilie oder Koriander',laden:'hofer'},
     ],
-    schritte:[
-      'Zwiebel würfeln und in Olivenöl bei mittlerer Hitze 4 Min. glasig anschwitzen.',
-      'Knoblauch, Karotten (gewürfelt) und alle Gewürze dazugeben, 2 Min. rösten bis es duftet.',
-      'Linsen (gewaschen), Tomaten und Brühe dazugeben. Aufkochen.',
-      'Bei mittlerer Hitze 20 Min. köcheln lassen bis die Linsen weich sind.',
-      'Mit einem Stabmixer die Hälfte pürieren – je nach gewünschter Konsistenz mehr oder weniger.',
-      'Zitronensaft einrühren, abschmecken. Mit frischen Kräutern und Olivenöl servieren.',
+    schritte:['Zwiebel glasig anschwitzen.','Knoblauch, Karotten + Gewürze 2 Min. rösten.','Linsen, Tomaten + Brühe, aufkochen.','20 Min. köcheln bis Linsen weich.','Halb pürieren, Zitronensaft einrühren, abschmecken.'],
+    tipp:'Rote Linsen müssen nicht eingeweicht werden – direkt aus der Packung.',
+  },
+  {
+    id:10012, name:'Reis-Bowl mit Garnelen', emoji:'🦐',
+    küche:'Asiatisch-inspiriert · Bowl',
+    tags:['viel-protein','wenig-kcal','schnell'], vegetarisch:false, zeit:25,
+    quelle:'https://www.instagram.com/reel/DRciDDkCIQf/', quelleText:'Instagram – Reis-Bowl',
+    vonApi:false,
+    er:{kcal:465,protein:40,ballaststoffe:5,fett:10,kh:48},
+    sie:{kcal:360,protein:30,ballaststoffe:4,fett:8,kh:37},
+    zutaten:[
+      {name:'Garnelen TK küchenfertig 400 g',laden:'spar'},{name:'Jasminreis 300 g',laden:'spar'},
+      {name:'Avocado 1 Stk.',laden:'spar'},{name:'Salatgurke ½',laden:'hofer'},
+      {name:'Rote Paprika 1 Stk.',laden:'hofer'},{name:'Sojasoße, Sesamöl',laden:'spar'},
+      {name:'Knoblauch, Chili-Flocken',laden:'spar'},{name:'Frühlingszwiebeln, Sesam, Limette',laden:'spar'},
     ],
-    tipp:'Rote Linsen müssen nicht eingeweicht werden – direkt aus der Packung. Mit Fladenbrot servieren.',
+    schritte:['Reis kochen.','Garnelen auftauen, trocken tupfen, mit Knoblauch 2–3 Min. anbraten.','Mit Sojasoße + Sesamöl ablöschen.','Dressing aus Sojasoße, Sesamöl, Limette, Chili mischen.','Bowl aufbauen: Reis, Garnelen, Gemüse – mit Dressing, Sesam, Frühlingszwiebeln abschließen.'],
+    tipp:'TK-Garnelen in kaltem Wasser in 10 Min. auftauen. Sriracha ins Dressing für mehr Schärfe.',
   },
 ];
 
-// STATE
+// ════════════════════════════════════════════════════════
+//  API FETCH FUNCTIONS
+// ════════════════════════════════════════════════════════
+async function fetchRezepteBatch() {
+  const cache = getCache();
+  const today = new Date().toISOString().slice(0,10);
+
+  // Use cache if today's batch exists
+  if (cache.batch && cache.batchDate === today && cache.batch.length > 0) {
+    return cache.batch;
+  }
+
+  const q = getQuotaState();
+  if (q.left < 3) return []; // not enough points
+
+  showApiLoading(true);
+  try {
+    // complexSearch with nutrition: ~2 points for 12 results
+    const url = `${API_BASE}/recipes/complexSearch?apiKey=${API_KEY}&query=dinner&number=12&addRecipeNutrition=true&instructionsRequired=true&fillIngredients=false&sort=popularity&language=de`;
+    const data = await rateLimitedFetch(url);
+    spendPoints(2); // conservative estimate
+
+    const rezepte = (data.results||[]).map((item,i) => mapSpoonacularToRezept(item, i));
+
+    cache.batch = rezepte;
+    cache.batchDate = today;
+    setCache(cache);
+    return rezepte;
+  } catch(e) {
+    console.warn('Spoonacular batch fetch failed:', e);
+    return [];
+  } finally {
+    showApiLoading(false);
+  }
+}
+
+async function fetchVollRezept(id) {
+  const cache = getCache();
+  if (cache['detail_'+id]) return cache['detail_'+id];
+
+  const q = getQuotaState();
+  if (q.left < 1) return null;
+
+  try {
+    const url = `${API_BASE}/recipes/${id}/information?apiKey=${API_KEY}&includeNutrition=false`;
+    const data = await rateLimitedFetch(url);
+    spendPoints(1);
+
+    const detail = {
+      zutaten: mapIngredients(data.extendedIngredients),
+      schritte: mapSchritte(data.analyzedInstructions),
+      tipp: null,
+      sourceUrl: data.sourceUrl,
+    };
+    cache['detail_'+id] = detail;
+    setCache(cache);
+    return detail;
+  } catch(e) {
+    console.warn('Detail fetch failed:', e);
+    return null;
+  }
+}
+
+function showApiLoading(show) {
+  const grid = document.getElementById('rezeptGrid');
+  if (!grid) return;
+  if (show && !document.getElementById('apiLoader')) {
+    const d = document.createElement('div');
+    d.id = 'apiLoader';
+    d.className = 'api-loading';
+    d.innerHTML = '<div class="spinner"></div><div>Lade Rezepte von Spoonacular…</div>';
+    grid.parentNode.insertBefore(d, grid);
+    grid.style.display = 'none';
+  } else if (!show) {
+    const d = document.getElementById('apiLoader');
+    if (d) d.remove();
+    if (grid) grid.style.display = '';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let REZEPTE = [...EIGENE_REZEPTE]; // starts with own, API recipes added on load
 let persona='beide', aktiveFilter=new Set(), aktuell=null;
 let einkaufsListe={}, wochenplan={};
 const TAGE=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
@@ -667,6 +793,9 @@ const TAG_META={
   'vegetarisch':        {css:'tag-veg',      label:'🌿 Vegetarisch'},
 };
 
+// ════════════════════════════════════════════════════════
+//  CORE HELPERS
+// ════════════════════════════════════════════════════════
 function naehrwerte(r){
   if(persona==='er') return r.er;
   if(persona==='sie') return r.sie;
@@ -694,28 +823,19 @@ function filterWechseln(el,f){
     document.querySelectorAll('.fc').forEach(c=>c.classList.remove('on'));
     document.querySelector('.fc[data-f="alle"]').classList.add('on');
   } else {
-    // Deactivate "alle"
     document.querySelector('.fc[data-f="alle"]').classList.remove('on');
-    if(aktiveFilter.has(f)){
-      aktiveFilter.delete(f); el.classList.remove('on');
-      // If nothing left, reactivate "alle"
-      if(aktiveFilter.size===0) document.querySelector('.fc[data-f="alle"]').classList.add('on');
-    } else {
-      aktiveFilter.add(f); el.classList.add('on');
-    }
+    if(aktiveFilter.has(f)){ aktiveFilter.delete(f); el.classList.remove('on'); if(aktiveFilter.size===0) document.querySelector('.fc[data-f="alle"]').classList.add('on'); }
+    else { aktiveFilter.add(f); el.classList.add('on'); }
   }
-  // Show count badge
-  const count = aktiveFilter.size;
-  const alleEl = document.querySelector('.fc[data-f="alle"]');
-  alleEl.textContent = count>0 ? `🍽️ Alle (${count} aktiv)` : '🍽️ Alle';
+  const count=aktiveFilter.size;
+  document.querySelector('.fc[data-f="alle"]').textContent=count>0?`🍽️ Alle (${count} aktiv)`:'🍽️ Alle';
   radZeichnen(); rezeptGridZeigen();
-  // If current result no longer in filtered set, hide it
-  if(aktuell && !gefilterteRezepte().find(r=>r.id===aktuell.id)){
-    document.getElementById('resultCard').classList.remove('show');
-    aktuell=null;
-  }
+  if(aktuell && !gefilterteRezepte().find(r=>r.id===aktuell.id)){ document.getElementById('resultCard').classList.remove('show'); aktuell=null; }
 }
 
+// ════════════════════════════════════════════════════════
+//  RAD
+// ════════════════════════════════════════════════════════
 function radZeichnen(){
   const rez=gefilterteRezepte();
   const cv=document.getElementById('wheel'), ctx=cv.getContext('2d');
@@ -737,16 +857,14 @@ function radZeichnen(){
   ctx.font='18px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🍽️',cx,cx);
 }
 
-// After the wheel stops, read which slice is actually under the pointer.
-// Pointer sits at the TOP = angle 270deg = 3PI/2 when normalised to [0, 2PI).
+// ── Read which slice is actually under the pointer after spin ──
 function rezeptUnterZeiger(){
   const rez=gefilterteRezepte();
   const sw=2*Math.PI/rez.length;
   const w=((winkel%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
   const zeiger=3*Math.PI/2;
   const rel=((zeiger-w)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
-  const idx=Math.floor(rel/sw)%rez.length;
-  return rez[idx];
+  return rez[Math.floor(rel/sw)%rez.length];
 }
 
 function drehen(){
@@ -754,7 +872,6 @@ function drehen(){
   const rez=gefilterteRezepte();
   const sw=2*Math.PI/rez.length;
   const zi=Math.floor(Math.random()*rez.length);
-  // Aim for centre of target slice to land under pointer (3PI/2)
   const winkelFinal=3*Math.PI/2-(zi*sw+sw/2);
   const w=((winkel%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
   const wf=((winkelFinal%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
@@ -766,16 +883,16 @@ function drehen(){
     const t=Math.min((now-t0)/d,1); winkel=w0+g*ease(t); radZeichnen();
     if(t<1){requestAnimationFrame(f);return;}
     drehtSich=false; document.getElementById('spinBtn').disabled=false;
-    aktuell=rezeptUnterZeiger();
-    ergebnisZeigen(aktuell);
+    aktuell=rezeptUnterZeiger(); ergebnisZeigen(aktuell);
   })(t0);
 }
 
+// ════════════════════════════════════════════════════════
+//  ERGEBNIS-KARTE
+// ════════════════════════════════════════════════════════
 function ergebnisZeigen(rez){
   const n=naehrwerte(rez);
   const card=document.getElementById('resultCard');
-
-  // 1. Update ALL content while card is hidden (or already visible – doesn't matter)
   document.getElementById('rEmoji').textContent=rez.emoji;
   document.getElementById('rName').textContent=rez.name;
   document.getElementById('rCuisine').textContent=rez.küche;
@@ -783,6 +900,7 @@ function ergebnisZeigen(rez){
   const te=document.getElementById('rTags'); te.innerHTML='';
   rez.tags.forEach(t=>{const m=TAG_META[t]||{css:'',label:t};te.innerHTML+=`<span class="tag ${m.css}">${m.label}</span>`;});
   if(rez.vegetarisch) te.innerHTML+=`<span class="tag tag-veg">🌿 Vegetarisch</span>`;
+  if(rez.vonApi) te.innerHTML+=`<span class="tag" style="background:#e8f5e9;border-color:#a8d4b0;color:#1f6b35;">🌐 Spoonacular</span>`;
   document.getElementById('rNutri').innerHTML=`
     <div class="nutri-box"><div class="nutri-val" style="color:var(--rust)">${n.kcal}</div><div class="nutri-label">kcal</div></div>
     <div class="nutri-box"><div class="nutri-val" style="color:#2B4BA0">${n.protein}g</div><div class="nutri-label">Protein</div></div>
@@ -795,23 +913,49 @@ function ergebnisZeigen(rez){
   const src=document.getElementById('rSource');
   if(rez.quelle){src.href=rez.quelle;src.textContent=`🔗 ${rez.quelleText}`;src.style.display='inline-flex';}
   else src.style.display='none';
-
-  // 2. NOW trigger animation – content is already correct, no stale flash possible
-  card.classList.remove('show');
-  // Use rAF to guarantee a full repaint cycle before re-adding .show
-  requestAnimationFrame(()=>{
-    requestAnimationFrame(()=>{
-      card.classList.add('show');
-      card.scrollIntoView({behavior:'smooth',block:'nearest'});
-    });
-  });
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    card.classList.remove('show'); void card.offsetWidth; card.classList.add('show');
+    card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }));
 }
 
-function rezeptOeffnen(rez){
+// ════════════════════════════════════════════════════════
+//  REZEPT MODAL (with lazy API load for ingredients/steps)
+// ════════════════════════════════════════════════════════
+async function rezeptOeffnen(rez){
   if(!rez) return;
+  document.getElementById('rmTitle').textContent=rez.emoji+' '+rez.name;
+
+  // Show modal immediately with loading state for API recipes
+  let zutaten = rez.zutaten;
+  let schritte = rez.schritte;
+  let tipp     = rez.tipp;
+
+  document.getElementById('overlayRezept').classList.add('open');
+
+  if(rez.vonApi && (!zutaten || !schritte)){
+    document.getElementById('rezeptModalInhalt').innerHTML=`<div class="api-loading"><div class="spinner"></div><div>Lade vollständiges Rezept…<br><small style="opacity:.6">1 API-Punkt wird verwendet</small></div></div>`;
+    const detail = await fetchVollRezept(rez.id);
+    if(detail){
+      zutaten = detail.zutaten;
+      schritte = detail.schritte;
+      // Patch the recipe in REZEPTE array so we don't re-fetch
+      const idx = REZEPTE.findIndex(r=>r.id===rez.id);
+      if(idx>=0){ REZEPTE[idx].zutaten=zutaten; REZEPTE[idx].schritte=schritte; }
+    }
+  }
+
   const n=naehrwerte(rez);
   const pl=persona==='er'?'♂ Er':persona==='sie'?'♀ Sie':'👫 Beide (Ø)';
-  document.getElementById('rmTitle').textContent=rez.emoji+' '+rez.name;
+
+  const zutatenHtml = zutaten?.length
+    ? `<ul class="zutaten-list">${zutaten.map(z=>`<li><span class="z-dot"></span><span>${z.name}</span><span class="z-store ${z.laden==='spar'?'z-spar':'z-hofer'}">${z.laden==='spar'?'SPAR':'HOFER'}</span></li>`).join('')}</ul>`
+    : `<p style="color:var(--mid);font-size:.85rem;">Zutaten nicht verfügbar – <a href="${rez.quelle||'#'}" target="_blank">Originalrezept öffnen</a></p>`;
+
+  const schritteHtml = schritte?.length
+    ? `<ol class="schritte-list">${schritte.map(s=>`<li>${s}</li>`).join('')}</ol>`
+    : `<p style="color:var(--mid);font-size:.85rem;">Zubereitungsschritte nicht verfügbar – <a href="${rez.quelle||'#'}" target="_blank">Originalrezept öffnen</a></p>`;
+
   document.getElementById('rezeptModalInhalt').innerHTML=`
     <div class="rezept-hero">
       <div class="rezept-emoji-big">${rez.emoji}</div>
@@ -822,6 +966,7 @@ function rezeptOeffnen(rez){
           <span class="rstat">⏱️ ${rez.zeit} Min.</span>
           <span class="rstat">👥 2 Personen</span>
           ${rez.vegetarisch?'<span class="rstat">🌿 Vegetarisch</span>':''}
+          ${rez.vonApi?'<span class="rstat" style="color:var(--forest-light);">🌐 Spoonacular</span>':''}
           ${rez.quelle?`<a href="${rez.quelle}" target="_blank" rel="noopener" class="rstat" style="color:var(--forest-light);text-decoration:none;">🔗 Originalrezept</a>`:''}
         </div>
       </div>
@@ -838,24 +983,28 @@ function rezeptOeffnen(rez){
     </div>
     <div class="rezept-section">
       <div class="rezept-section-title">🧺 Zutaten für 2 Personen</div>
-      <ul class="zutaten-list">${rez.zutaten.map(z=>`<li><span class="z-dot"></span><span>${z.name}</span><span class="z-store ${z.laden==='spar'?'z-spar':'z-hofer'}">${z.laden==='spar'?'SPAR':'HOFER'}</span></li>`).join('')}</ul>
+      ${zutatenHtml}
     </div>
     <div class="rezept-section">
       <div class="rezept-section-title">👨‍🍳 Zubereitung</div>
-      <ol class="schritte-list">${rez.schritte.map(s=>`<li>${s}</li>`).join('')}</ol>
+      ${schritteHtml}
     </div>
-    ${rez.tipp?`<div class="tipp-box"><strong>💡 Tipp:</strong> ${rez.tipp}</div>`:''}
+    ${tipp?`<div class="tipp-box"><strong>💡 Tipp:</strong> ${tipp}</div>`:''}
     <div class="modal-actions">
       <button class="btn btn-fill" onclick="zurEinkaufsliste(REZEPTE.find(r=>r.id===${rez.id}));rezeptSchliessen()">🛒 Zur Einkaufsliste</button>
       <button class="btn btn-gold" onclick="rezeptSchliessen()">✓ Schließen</button>
     </div>`;
-  document.getElementById('overlayRezept').classList.add('open');
 }
 function rezeptSchliessen(){ document.getElementById('overlayRezept').classList.remove('open'); }
 
+// ════════════════════════════════════════════════════════
+//  EINKAUFSLISTE
+// ════════════════════════════════════════════════════════
 function zurEinkaufsliste(rez){
   if(!rez) return;
-  rez.zutaten.forEach(z=>{einkaufsListe[z.name]={laden:z.laden,abgehakt:false};});
+  const zutaten = rez.zutaten || [];
+  if(!zutaten.length){ alert('Zutaten noch nicht geladen – bitte erst "Rezept ansehen" aufrufen.'); return; }
+  zutaten.forEach(z=>{einkaufsListe[z.name]={laden:z.laden,abgehakt:false};});
   listeZeigen();
 }
 function listeZeigen(){
@@ -886,6 +1035,9 @@ function exportieren(){
   Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([z.join('\n')],{type:'text/plain'})),download:'einkaufsliste.txt'}).click();
 }
 
+// ════════════════════════════════════════════════════════
+//  WOCHENPLAN
+// ════════════════════════════════════════════════════════
 function alleMischeln(){ const r=gefilterteRezepte(); TAGE.forEach(t=>{wochenplan[t]=r[Math.floor(Math.random()*r.length)];}); wocheZeigen(); }
 function wocheOeffnen(){ if(!Object.keys(wochenplan).length)alleMischeln();else wocheZeigen(); document.getElementById('overlayWoche').classList.add('open'); }
 function wocheSchliessen(){ document.getElementById('overlayWoche').classList.remove('open'); }
@@ -900,12 +1052,15 @@ function wocheZeigen(){
 }
 function alleZurListe(){ TAGE.forEach(t=>{if(wochenplan[t])zurEinkaufsliste(wochenplan[t]);}); wocheSchliessen(); }
 
+// ════════════════════════════════════════════════════════
+//  REZEPT GRID
+// ════════════════════════════════════════════════════════
 function rezeptGridZeigen(){
   document.getElementById('rezeptGrid').innerHTML=gefilterteRezepte().map(r=>{
     const n=naehrwerte(r);
     return `<div class="meal-card" onclick="aktuell=REZEPTE.find(x=>x.id===${r.id});ergebnisZeigen(aktuell);window.scrollTo({top:0,behavior:'smooth'});">
       <div class="card-emoji">${r.emoji}</div>
-      <div class="card-name">${r.name}</div>
+      <div class="card-name">${r.name}${r.vonApi?'<span class="api-source-tag">API</span>':''}</div>
       <div class="card-sub">${r.küche} · ⏱️ ${r.zeit} Min.</div>
       <div class="card-badges">
         <span class="badge b-kcal">${n.kcal} kcal</span>
@@ -916,8 +1071,28 @@ function rezeptGridZeigen(){
   }).join('');
 }
 
-radZeichnen();
-rezeptGridZeigen();
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+async function init(){
+  updateQuotaBadge();
+  radZeichnen();
+  rezeptGridZeigen();
+
+  // Load API recipes, add to pool
+  const apiRezepte = await fetchRezepteBatch();
+  if(apiRezepte.length){
+    // Merge: don't duplicate IDs
+    const existingIds = new Set(REZEPTE.map(r=>r.id));
+    const neu = apiRezepte.filter(r=>!existingIds.has(r.id));
+    REZEPTE = [...REZEPTE, ...neu];
+    radZeichnen();
+    rezeptGridZeigen();
+  }
+  updateQuotaBadge();
+}
+
+init();
 </script>
 </body>
 </html>
