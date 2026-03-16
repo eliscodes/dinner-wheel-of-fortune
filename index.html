@@ -345,7 +345,7 @@
 // ════════════════════════════════════════════════════════
 //  SPOONACULAR API CONFIG
 // ════════════════════════════════════════════════════════
-// API key obfuscated
+// API key (obfuscated – do not commit to public repos with real keys)
 // Obfuscated config — do not store plaintext API credentials in source
 const _ds_a = '225b3654090b074a';
 const _ds_b = '5104544c2f514030';
@@ -482,16 +482,87 @@ function mapSpoonacularToRezept(item, idx) {
   };
 }
 
+// ════════════════════════════════════════════════════════
+//  EINHEITEN-KONVERTIERUNG  (imperial → metrisch / deutsch)
+// ════════════════════════════════════════════════════════
+const UNIT_CONVERSIONS = [
+  // ── Volumen ──
+  // Negative lookbehind (?<!\/) prevents matching the "2" in "1/2 cup"
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*cup s?/gi,        fn: v => `${roundNice(v * 240)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*cups?/gi,          fn: v => `${roundNice(v * 240)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*tbsp s?/gi,        fn: v => `${roundNice(v * 15)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*tbsps?/gi,         fn: v => `${roundNice(v * 15)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*tablespoons?/gi,   fn: v => `${roundNice(v * 15)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*tsp s?/gi,         fn: v => `${roundNice(v * 5)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*tsps?/gi,          fn: v => `${roundNice(v * 5)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*teaspoons?/gi,     fn: v => `${roundNice(v * 5)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*fl\.?\s*oz\.?/gi,  fn: v => `${roundNice(v * 30)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*fluid ounces?/gi,  fn: v => `${roundNice(v * 30)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*pints?/gi,         fn: v => `${roundNice(v * 473)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*quarts?/gi,        fn: v => `${roundNice(v * 946)} ml` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*gallons?/gi,       fn: v => `${roundNice(v * 3785)} ml` },
+  // ── Gewicht ──
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*oz\.?(?!\s*fl)/gi, fn: v => `${roundNice(v * 28.35)} g` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*ounces?(?!\s*fl)/gi,fn:v => `${roundNice(v * 28.35)} g` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*lbs?\.?/gi,        fn: v => `${roundNice(v * 453.6)} g` },
+  { pattern: /(?<![\d\/])(\d+(?:[.,]\d+)?)\s*pounds?/gi,        fn: v => `${roundNice(v * 453.6)} g` },
+  // ── Temperatur ──
+  { pattern: /(?<![\d\/])(\d+)\s*°?\s*F\b/g,                    fn: v => `${Math.round((v - 32) * 5/9)} °C` },
+  { pattern: /(?<![\d\/])(\d+)\s*degrees?\s*fahrenheit/gi,       fn: v => `${Math.round((v - 32) * 5/9)} °C` },
+];
+
+// Post-conversion: fold large ml into l, large g into kg
+function normaliseMass(s) {
+  return s
+    .replace(/(\d+(?:[.,]\d+)?)\s*ml/g, (_, n) => {
+      const v = parseFloat(n.replace(',','.'));
+      if (v >= 1000) return `${roundNice(v/1000)} l`;
+      return `${roundNice(v)} ml`;
+    })
+    .replace(/(\d+(?:[.,]\d+)?)\s*g\b/g, (_, n) => {
+      const v = parseFloat(n.replace(',','.'));
+      if (v >= 1000) return `${roundNice(v/1000)} kg`;
+      return `${roundNice(v)} g`;
+    });
+}
+
+// Round to a sensible precision: integers if ≥ 10, 1 decimal if ≥ 1, else 2
+function roundNice(v) {
+  if (v >= 100) return Math.round(v);
+  if (v >= 10)  return Math.round(v * 2) / 2;   // 0.5 steps
+  if (v >= 1)   return Math.round(v * 10) / 10;
+  return Math.round(v * 100) / 100;
+}
+
+function convertUnits(text) {
+  if (!text) return text;
+  let out = text;
+  for (const rule of UNIT_CONVERSIONS) {
+    if (rule.fn) {
+      out = out.replace(rule.pattern, (match, numStr) => {
+        const v = parseFloat(numStr.replace(',', '.'));
+        return isNaN(v) ? match : rule.fn(v);
+      });
+    }
+  }
+  return normaliseMass(out);
+}
+
+// Also convert units inside recipe step texts
+function convertUnitsInSteps(steps) {
+  return (steps || []).map(s => convertUnits(s));
+}
+
 function mapIngredients(extIngredients) {
-  return (extIngredients||[]).map(i => ({
-    name: `${i.original || i.name}`,
+  return (extIngredients || []).map(i => ({
+    name: convertUnits(i.original || i.name),
     laden: Math.random() > 0.5 ? 'spar' : 'hofer',
   }));
 }
 
 function mapSchritte(analyzedInstructions) {
   const steps = analyzedInstructions?.[0]?.steps || [];
-  return steps.map(s => s.step).filter(Boolean);
+  return convertUnitsInSteps(steps.map(s => s.step).filter(Boolean));
 }
 
 // ════════════════════════════════════════════════════════
@@ -769,16 +840,17 @@ async function translateRezept(rez) {
 async function translateDetail(detail) {
   if (!detail) return detail;
 
-  // Translate steps
+  // Translate steps, then convert units
   if (detail.schritte?.length) {
     detail.schritte = await translateArray(detail.schritte);
+    detail.schritte = convertUnitsInSteps(detail.schritte);
   }
 
-  // Translate ingredient names (only the text before quantities)
+  // Translate ingredient names, then convert units
   if (detail.zutaten?.length) {
     const names = detail.zutaten.map(z => z.name);
     const translated = await translateArray(names);
-    detail.zutaten = detail.zutaten.map((z, i) => ({ ...z, name: translated[i] }));
+    detail.zutaten = detail.zutaten.map((z, i) => ({ ...z, name: convertUnits(translated[i]) }));
   }
 
   return detail;
