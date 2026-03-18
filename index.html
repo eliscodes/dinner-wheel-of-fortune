@@ -857,40 +857,82 @@ async function translateDetail(detail) {
 }
 
 
-async function fetchRezepteBatch() {
-  const cache = getCache();
-  const today = new Date().toISOString().slice(0,10);
+// ── Rotating query pool – neue Rezepte bei jedem Aufruf ──
+const QUERY_POOL = [
+  'Italian dinner','Austrian dinner','Mediterranean dinner','Asian dinner',
+  'Indian dinner','Greek dinner','Spanish dinner','French dinner',
+  'Mexican dinner','Thai dinner','Japanese dinner','Middle Eastern dinner',
+  'pasta dinner','chicken dinner','fish dinner','vegetarian dinner',
+  'beef dinner','seafood dinner','soup dinner','salad dinner',
+  'baked dinner','grilled dinner','stir fry dinner','curry dinner',
+  'salmon recipe','shrimp recipe','lentil recipe','zucchini recipe',
+  'spinach recipe','mushroom recipe','chickpea recipe',
+  'pork recipe','lamb recipe','rice bowl','noodle dinner',
+];
 
-  // Use cache if today's batch exists
-  if (cache.batch && cache.batchDate === today && cache.batch.length > 0) {
-    return cache.batch;
-  }
+const POOL_KEY = 'dinnerspin_pool_v2';
+const QIDX_KEY = 'dinnerspin_qidx_v2';
 
-  const q = getQuotaState();
-  if (q.left < 3) return []; // not enough points
-
-  showApiLoading(true);
+function getRecipePool() {
+  try { return JSON.parse(localStorage.getItem(POOL_KEY) || '[]'); } catch(e){ return []; }
+}
+function saveRecipePool(pool) {
+  try { localStorage.setItem(POOL_KEY, JSON.stringify(pool)); } catch(e){}
+}
+function getTodayState() {
   try {
-    // complexSearch with nutrition: ~2 points for 12 results
-    const url = `${API_BASE}/recipes/complexSearch?apiKey=${API_KEY}&query=dinner&number=12&addRecipeNutrition=true&instructionsRequired=true&fillIngredients=false&sort=popularity&language=de`;
+    const raw = JSON.parse(localStorage.getItem(QIDX_KEY) || '{}');
+    if (raw.date === new Date().toISOString().slice(0,10)) return raw;
+  } catch(e){}
+  return { date: new Date().toISOString().slice(0,10), usedIdx: [], fetchedToday: 0 };
+}
+function saveTodayState(s) {
+  try { localStorage.setItem(QIDX_KEY, JSON.stringify(s)); } catch(e){}
+}
+
+async function fetchRezepteBatch() {
+  const q = getQuotaState();
+  const pool = getRecipePool();
+  if (q.left < 3) return pool;
+
+  const today = getTodayState();
+  const poolIds = new Set(pool.map(r => r.id));
+
+  // Pick a query not yet used today
+  const available = QUERY_POOL.map((_,i) => i).filter(i => !today.usedIdx.includes(i));
+  if (available.length === 0) return pool; // all used today
+
+  const qIdx  = available[Math.floor(Math.random() * available.length)];
+  const query = QUERY_POOL[qIdx];
+  const offset = Math.floor(Math.random() * 40);
+
+  showApiLoading(true, `Suche: "${query}"...`);
+  try {
+    const url = `${API_BASE}/recipes/complexSearch?apiKey=${API_KEY}&query=${encodeURIComponent(query)}&number=8&addRecipeNutrition=true&instructionsRequired=true&fillIngredients=false&sort=random&offset=${offset}`;
     const data = await rateLimitedFetch(url);
-    spendPoints(2); // conservative estimate
+    spendPoints(2);
 
-    const rezepte = (data.results||[]).map((item,i) => mapSpoonacularToRezept(item, i));
+    const neu = (data.results || [])
+      .map((item, i) => mapSpoonacularToRezept(item, i))
+      .filter(r => !poolIds.has(r.id));
 
-    // Translate names & cuisine to German (sequential, rate-limited internally)
-    showApiLoading(true, 'Übersetze Rezepte ins Deutsche…');
-    for (const r of rezepte) {
-      await translateRezept(r);
+    if (neu.length) {
+      showApiLoading(true, `Ubersetze ${neu.length} neue Rezepte...`);
+      for (const r of neu) await translateRezept(r);
+      const updatedPool = [...pool, ...neu];
+      saveRecipePool(updatedPool);
+      today.usedIdx.push(qIdx);
+      today.fetchedToday += neu.length;
+      saveTodayState(today);
+      return updatedPool;
+    } else {
+      today.usedIdx.push(qIdx);
+      saveTodayState(today);
+      return pool;
     }
-
-    cache.batch = rezepte;
-    cache.batchDate = today;
-    setCache(cache);
-    return rezepte;
   } catch(e) {
     console.warn('Spoonacular batch fetch failed:', e);
-    return [];
+    return pool;
   } finally {
     showApiLoading(false);
   }
@@ -1276,8 +1318,8 @@ async function init(){
     REZEPTE = [...REZEPTE, ...neu];
     radZeichnen();
     rezeptGridZeigen();
-    setApiStatus('✅', `+${neu.length} API-Rezepte geladen`, 'rgba(74,140,106,.3)');
-    // Auto-hide after 4s
+    const total = apiRezepte.length;
+    setApiStatus('✅', `${total} API-Rezepte im Pool`, 'rgba(74,140,106,.3)');
     setTimeout(() => {
       const b = document.getElementById('apiStatusBadge');
       if (b) b.style.display = 'none';
