@@ -1300,41 +1300,64 @@ function setApiStatus(icon, text, color='rgba(255,255,255,.1)') {
 
 async function init(){
   updateQuotaBadge();
+
+  // ── Schritt 1: Saved pool SOFORT ins Rad laden (kein Warten auf API) ──
+  const savedPool = getRecipePool();
+  if (savedPool.length) {
+    const existingIds = new Set(REZEPTE.map(r => r.id));
+    const fromPool = savedPool.filter(r => !existingIds.has(r.id));
+    REZEPTE = [...REZEPTE, ...fromPool];
+  }
   radZeichnen();
   rezeptGridZeigen();
+  setApiStatus('⏳', `${REZEPTE.length} Rezepte geladen, suche neue…`);
 
-  setApiStatus('⏳', 'Lade API-Rezepte…');
-
-  let apiRezepte = [];
-  try {
-    apiRezepte = await fetchRezepteBatch();
-  } catch(e) {
-    console.warn('API fetch error:', e);
-  }
-
-  if (apiRezepte.length) {
-    const existingIds = new Set(REZEPTE.map(r => r.id));
-    const neu = apiRezepte.filter(r => !existingIds.has(r.id));
-    REZEPTE = [...REZEPTE, ...neu];
-    radZeichnen();
-    rezeptGridZeigen();
-    const total = apiRezepte.length;
-    setApiStatus('✅', `${total} API-Rezepte im Pool`, 'rgba(74,140,106,.3)');
-    setTimeout(() => {
-      const b = document.getElementById('apiStatusBadge');
-      if (b) b.style.display = 'none';
-    }, 4000);
-  } else {
+  // ── Schritt 2: Neue Batches holen solange Quota reicht (max 3×) ──
+  let neuGesamt = 0;
+  for (let runde = 0; runde < 3; runde++) {
     const q = getQuotaState();
-    if (q.left === 0) {
-      setApiStatus('🚫', 'API-Tageslimit erreicht', 'rgba(184,74,42,.3)');
+    if (q.left < 3) break;
+
+    const today = getTodayState();
+    const available = QUERY_POOL.map((_,i) => i).filter(i => !today.usedIdx.includes(i));
+    if (available.length === 0) break;
+
+    let neueRezepte = [];
+    try {
+      neueRezepte = await fetchRezepteBatch();
+    } catch(e) {
+      console.warn('Fetch error:', e);
+      break;
+    }
+
+    // Merge any new ones into REZEPTE
+    const existingIds = new Set(REZEPTE.map(r => r.id));
+    const neu = neueRezepte.filter(r => !existingIds.has(r.id));
+    if (neu.length) {
+      REZEPTE = [...REZEPTE, ...neu];
+      neuGesamt += neu.length;
+      radZeichnen();
+      rezeptGridZeigen();
+      setApiStatus('⏳', `${REZEPTE.length} Rezepte – lade weitere…`);
     } else {
-      setApiStatus('⚠️', 'API nicht erreichbar – eigene Rezepte aktiv', 'rgba(180,140,0,.25)');
-      // Keep visible so user knows why no API recipes show
+      break; // no new recipes, stop fetching
     }
   }
 
+  // ── Schritt 3: Status anzeigen ──
   updateQuotaBadge();
+  const q = getQuotaState();
+  if (q.left === 0) {
+    setApiStatus('🚫', `${REZEPTE.length} Rezepte · Tageslimit erreicht`, 'rgba(184,74,42,.3)');
+  } else if (neuGesamt > 0) {
+    setApiStatus('✅', `${REZEPTE.length} Rezepte total (+${neuGesamt} neu)`, 'rgba(74,140,106,.3)');
+    setTimeout(() => { const b=document.getElementById('apiStatusBadge'); if(b) b.style.display='none'; }, 5000);
+  } else if (REZEPTE.length > 12) {
+    setApiStatus('✅', `${REZEPTE.length} Rezepte aus Pool`, 'rgba(74,140,106,.3)');
+    setTimeout(() => { const b=document.getElementById('apiStatusBadge'); if(b) b.style.display='none'; }, 3000);
+  } else {
+    setApiStatus('⚠️', 'API nicht erreichbar – eigene Rezepte aktiv', 'rgba(180,140,0,.25)');
+  }
 }
 
 init();
