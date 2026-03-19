@@ -385,7 +385,7 @@ function _dr(){
 const{k:API_KEY,b:API_BASE}=_dr();
 const QUOTA_MAX = 50;
 const CACHE_KEY = 'dinnerspin_cache_v3';
-const QUOTA_KEY = 'dinnerspin_quota_v3';
+const QUOTA_KEY = 'dinnerspin_quota_v4';  // bumped — new API key = fresh quota
 
 // ── Quota state (persisted in localStorage, keyed by UTC date) ──
 function getQuotaState() {
@@ -408,10 +408,13 @@ function spendPoints(n) {
   saveQuotaState(q); updateQuotaBadge(q);
 }
 function updateQuotaFromHeaders(headers) {
-  const used = parseInt(headers.get('X-API-Quota-Used')||'0');
-  const left = parseInt(headers.get('X-API-Quota-Left')||String(QUOTA_MAX));
-  if (!isNaN(used) && used > 0) {
-    const q = { date: new Date().toISOString().slice(0,10), used, left: Math.max(left,0) };
+  const usedStr = headers.get('X-API-Quota-Used');
+  const leftStr = headers.get('X-API-Quota-Left');
+  // Only update if Spoonacular actually returned quota headers
+  if (usedStr !== null) {
+    const used = parseInt(usedStr) || 0;
+    const left = leftStr !== null ? Math.max(parseInt(leftStr), 0) : Math.max(QUOTA_MAX - used, 0);
+    const q = { date: new Date().toISOString().slice(0,10), used, left };
     saveQuotaState(q); updateQuotaBadge(q);
   }
 }
