@@ -368,16 +368,21 @@
 //  SPOONACULAR API CONFIG
 // ════════════════════════════════════════════════════════
 // API key (obfuscated – do not commit to public repos with real keys)
-// Obfuscated config — do not store plaintext API credentials in source
-const _ds_a = '225b3654090b074a';
-const _ds_b = '5104544c2f514030';
-const _ds_c = '7e514833700a320b';
-const _ds_d = '760d62000203014d';
-const _ds_h = 'Qp7Kx5202SnD';
-const _ds_e = '2c1a274243081a572a47197f371e3c5d5e53560d2756027f27013e';
-function _dr(h,s){const k=h.split('').reverse().join('');const b=s.match(/../g).map(x=>parseInt(x,16));return b.map((c,i)=>String.fromCharCode(c^k.charCodeAt(i%k.length))).join('');}
-const API_KEY  = _dr(_ds_h, _ds_a + _ds_c + _ds_b + _ds_d);
-const API_BASE = _dr(_ds_h, _ds_e);
+// Obfuscated config — do not store plaintext API credentials
+const _ik = '2135327070416e69705372656e6e6944';
+const _ek = '2922571c210a6724135c1601485c7757';
+const _da = '0b7d5842271b066d';
+const _db = '0c72084476485136';
+const _dc = '4d066f150c0b7746';
+const _dd = '430262420c587b47';
+const _de = '053f4d0237421b7b1b423e5f4b1e2d19032a5a072819467a195d3a';
+function _dr(){
+  const _dh=(h,k)=>h.match(/../g).map((x,i)=>String.fromCharCode(parseInt(x,16)^k.charCodeAt(i%k.length))).join('');
+  const ik=_ik.match(/../g).reverse().join('').match(/../g).map(x=>String.fromCharCode(parseInt(x,16))).join('');
+  const xk=_dh(_ek,ik);
+  return{k:_dh(_da+_dc+_db+_dd,xk),b:_dh(_de,xk)};
+}
+const{k:API_KEY,b:API_BASE}=_dr();
 const QUOTA_MAX = 50;
 const CACHE_KEY = 'dinnerspin_cache_v3';
 const QUOTA_KEY = 'dinnerspin_quota_v3';
@@ -480,7 +485,7 @@ function mapSpoonacularToRezept(item, idx) {
   if (fiber  >= 8)   tags.push('viel-ballaststoffe');
   if ((item.readyInMinutes||60) < 30) tags.push('schnell');
 
-  const cuisines = item.cuisines?.length ? item.cuisines.join(', ') : 'International';
+  const cuisines = item.cuisines?.length ? item.cuisines.join(', ') : 'Europäisch';
   const diets = item.diets || [];
   const vegetarisch = diets.some(d => ['vegetarian','vegan','lacto vegetarian','ovo vegetarian'].includes(d.toLowerCase()));
   if (vegetarisch) tags.push('vegetarisch');
@@ -881,19 +886,36 @@ async function translateDetail(detail) {
 
 // ── Rotating query pool – neue Rezepte bei jedem Aufruf ──
 const QUERY_POOL = [
-  'Italian dinner','Austrian dinner','Mediterranean dinner','Asian dinner',
-  'Indian dinner','Greek dinner','Spanish dinner','French dinner',
-  'Mexican dinner','Thai dinner','Japanese dinner','Middle Eastern dinner',
-  'pasta dinner','chicken dinner','fish dinner','vegetarian dinner',
-  'beef dinner','seafood dinner','soup dinner','salad dinner',
-  'baked dinner','grilled dinner','stir fry dinner','curry dinner',
-  'salmon recipe','shrimp recipe','lentil recipe','zucchini recipe',
-  'spinach recipe','mushroom recipe','chickpea recipe',
-  'pork recipe','lamb recipe','rice bowl','noodle dinner',
+  // ── Österreichisch ──
+  'Austrian schnitzel','Austrian goulash','Austrian dumpling','Viennese dinner',
+  'Wiener Schnitzel','Austrian pasta','Austrian roast','Tafelspitz',
+  // ── Italienisch ──
+  'Italian pasta','Italian risotto','Italian chicken','Italian fish dinner',
+  'Italian soup','Italian baked pasta','Italian pork','Italian vegetarian',
+  'pasta carbonara','pasta bolognese','Italian gnocchi','Italian seafood',
+  // ── Deutsch ──
+  'German dinner','German pork','German potato','German sausage dinner',
+  'German beef','German soup','German cabbage','Eintopf',
+  // ── Spanisch ──
+  'Spanish dinner','Spanish chicken','Spanish fish','Spanish pork',
+  'Spanish paella','Spanish soup','Spanish vegetable',
+  // ── Griechisch ──
+  'Greek dinner','Greek chicken','Greek lamb','Greek vegetarian',
+  'Greek fish','Greek salad dinner','Greek pasta',
+  // ── Tschechisch / Osteuropäisch ──
+  'Czech dinner','Czech pork','Czech soup','Czech dumpling',
+  'Eastern European dinner','Polish dinner','Hungarian goulash',
+  // ── Mediterran / Französisch ──
+  'Mediterranean fish','Mediterranean chicken','Mediterranean vegetable',
+  'French dinner','French chicken','French soup','French beef',
+  // ── Zutaten europäisch ──
+  'zucchini dinner','mushroom dinner European','spinach pasta',
+  'salmon European','pork tenderloin dinner','veal dinner',
+  'cabbage dinner','leek dinner','beetroot dinner',
 ];
 
-const POOL_KEY = 'dinnerspin_pool_v2';
-const QIDX_KEY = 'dinnerspin_qidx_v2';
+const POOL_KEY = 'dinnerspin_pool_v3';  // bumped — clears old non-European cache
+const QIDX_KEY = 'dinnerspin_qidx_v3';
 
 function getRecipePool() {
   try { return JSON.parse(localStorage.getItem(POOL_KEY) || '[]'); } catch(e){ return []; }
