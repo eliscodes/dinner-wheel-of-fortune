@@ -471,14 +471,14 @@ function nutriVal(nutrients, name) {
 }
 
 function mapSpoonacularToRezept(item, idx) {
+  // Nutrition: use data if available (from detail fetch), otherwise estimate by cuisine/type
   const nut = item.nutrition?.nutrients || [];
-  const kcal = nutriVal(nut,'Calories') || nutriVal(nut,'Energy') || 500;
-  const protein = nutriVal(nut,'Protein') || 25;
-  const fat  = nutriVal(nut,'Fat') || nutriVal(nut,'Total Fat') || 15;
-  const carbs = nutriVal(nut,'Carbohydrates') || nutriVal(nut,'Net Carbohydrates') || 40;
-  const fiber = nutriVal(nut,'Fiber') || nutriVal(nut,'Dietary Fiber') || 4;
+  const kcal    = nutriVal(nut,'Calories')       || estimateNutrition(item.title, 'kcal');
+  const protein = nutriVal(nut,'Protein')         || estimateNutrition(item.title, 'protein');
+  const fat     = nutriVal(nut,'Fat')             || estimateNutrition(item.title, 'fat');
+  const carbs   = nutriVal(nut,'Carbohydrates')   || estimateNutrition(item.title, 'carbs');
+  const fiber   = nutriVal(nut,'Fiber')           || estimateNutrition(item.title, 'fiber');
 
-  // Approximate er/sie split: +15% / -15% of base
   const er  = { kcal: Math.round(kcal*1.15), protein: Math.round(protein*1.15), ballaststoffe: fiber, fett: Math.round(fat*1.1),  kh: Math.round(carbs*1.1) };
   const sie = { kcal: Math.round(kcal*0.85), protein: Math.round(protein*0.85), ballaststoffe: fiber, fett: Math.round(fat*0.9),  kh: Math.round(carbs*0.9) };
 
@@ -493,6 +493,14 @@ function mapSpoonacularToRezept(item, idx) {
   const vegetarisch = diets.some(d => ['vegetarian','vegan','lacto vegetarian','ovo vegetarian'].includes(d.toLowerCase()));
   if (vegetarisch) tags.push('vegetarisch');
 
+  // addRecipeInformation=true gives us ingredients + steps for free in the batch
+  const zutaten = item.extendedIngredients?.length
+    ? mapIngredients(item.extendedIngredients)
+    : null;
+  const schritte = item.analyzedInstructions?.length
+    ? convertUnitsInSteps(mapSchritte(item.analyzedInstructions))
+    : null;
+
   return {
     id: item.id,
     name: item.title,
@@ -502,14 +510,29 @@ function mapSpoonacularToRezept(item, idx) {
     vegetarisch,
     zeit: item.readyInMinutes || 45,
     quelle: item.sourceUrl || null,
-    quelleText: item.sourceName ? `${item.sourceName}` : 'Spoonacular',
+    quelleText: item.sourceName || 'Spoonacular',
     vonApi: true,
     er, sie,
-    // ingredients/steps loaded lazily
-    zutaten: null,
-    schritte: null,
+    zutaten,
+    schritte,
     tipp: null,
   };
+}
+
+// Estimate nutrition when not provided by API (avoids extra point spend)
+function estimateNutrition(title, type) {
+  const t = (title||'').toLowerCase();
+  const isFish    = /fish|salmon|trout|cod|tuna|sea/.test(t);
+  const isPasta   = /pasta|spaghetti|noodle|gnocchi|risotto/.test(t);
+  const isSoup    = /soup|stew|eintopf|broth/.test(t);
+  const isMeat    = /pork|beef|chicken|schnitzel|roast|lamb|veal/.test(t);
+  const isVeg     = /vegetable|veggie|salad|zucchini|spinach/.test(t);
+  if (type==='kcal')    return isSoup?320:isFish?440:isVeg?380:isPasta?560:isMeat?580:500;
+  if (type==='protein') return isFish?38:isMeat?36:isPasta?18:isVeg?12:22;
+  if (type==='fat')     return isFish?14:isMeat?22:isPasta?16:isVeg?10:15;
+  if (type==='carbs')   return isPasta?65:isSoup?28:isVeg?30:42;
+  if (type==='fiber')   return isSoup?8:isVeg?7:isPasta?4:3;
+  return 0;
 }
 
 // ════════════════════════════════════════════════════════
@@ -798,6 +821,265 @@ const EIGENE_REZEPTE = [
     schritte:['Reis kochen.','Garnelen auftauen, trocken tupfen, mit Knoblauch 2–3 Min. anbraten.','Mit Sojasoße + Sesamöl ablöschen.','Dressing aus Sojasoße, Sesamöl, Limette, Chili mischen.','Bowl aufbauen: Reis, Garnelen, Gemüse – mit Dressing, Sesam, Frühlingszwiebeln abschließen.'],
     tipp:'TK-Garnelen in kaltem Wasser in 10 Min. auftauen. Sriracha ins Dressing für mehr Schärfe.',
   },
+  {
+    id:10013, name:'Chicken Katsu', emoji:'🍱',
+    küche:'Japanisch · Knusprig gebraten',
+    tags:['viel-protein'], vegetarisch:false, zeit:35,
+    quelle:'https://www.instagram.com/reel/DRciDDkCIQf/', quelleText:'Instagram – Chicken Katsu',
+    vonApi:false,
+    er: {kcal:620,protein:42,ballaststoffe:3,fett:22,kh:58},
+    sie:{kcal:480,protein:32,ballaststoffe:2,fett:17,kh:44},
+    zutaten:[
+      {name:'Hähnchenbrustfilet 2 × 200 g',laden:'hofer'},
+      {name:'Panko-Semmelbrösel 100 g',laden:'spar'},
+      {name:'Eier 2 Stk.',laden:'hofer'},
+      {name:'Mehl 50 g',laden:'spar'},
+      {name:'Japanreis / Sushi-Reis 300 g',laden:'spar'},
+      {name:'Weißkohl (Spitzkohl) ¼ Kopf',laden:'hofer'},
+      {name:'Tonkatsu-Sauce oder Worcestershire + Ketchup',laden:'spar'},
+      {name:'Öl zum Frittieren',laden:'hofer'},
+      {name:'Salz, Pfeffer',laden:'spar'},
+    ],
+    schritte:[
+      'Hähnchenfilets flach klopfen (ca. 1 cm dick), salzen und pfeffern.',
+      'Mehl, verquirlte Eier und Panko in drei separate flache Teller geben.',
+      'Hähnchen nacheinander in Mehl, Ei und Panko wenden – gut andrücken.',
+      'In einer Pfanne mit reichlich Öl bei mittlerer-hoher Hitze je 4 Min. pro Seite goldbraun braten. Auf Küchenpapier abtropfen lassen.',
+      'Reis nach Packungsanweisung kochen.',
+      'Weißkohl in feine Streifen schneiden.',
+      'Chicken Katsu in Scheiben schneiden, auf Reis anrichten. Mit Krautsalat und Tonkatsu-Sauce servieren.',
+    ],
+    tipp:'Die Panade haftet besser wenn das Hähnchen 10 Min. nach dem Panieren im Kühlschrank ruht. Für Tonkatsu-Sauce: 2 EL Worcestershire + 1 EL Ketchup + 1 TL Sojasoße mischen.',
+  },
+  {
+    id:10014, name:'Marry Me Butter Beans', emoji:'🫘',
+    küche:'Mediterran · Cremig-vegetarisch',
+    tags:['schnell','vegetarisch','viel-ballaststoffe'], vegetarisch:true, zeit:25,
+    quelle:'https://www.instagram.com/reel/DHBRBTtvtZp/', quelleText:'Instagram – Marry Me Butter Beans',
+    vonApi:false,
+    er: {kcal:480,protein:22,ballaststoffe:14,fett:22,kh:44},
+    sie:{kcal:370,protein:17,ballaststoffe:11,fett:17,kh:34},
+    zutaten:[
+      {name:'Butterbohnen (Dose) 2 × 400 g',laden:'spar'},
+      {name:'Getrocknete Tomaten in Öl 80 g',laden:'spar'},
+      {name:'Schlagsahne 200 ml',laden:'hofer'},
+      {name:'Babyspinat 150 g',laden:'spar'},
+      {name:'Knoblauch 3 Zehen',laden:'spar'},
+      {name:'Parmesan gerieben 50 g',laden:'spar'},
+      {name:'Basilikum frisch',laden:'spar'},
+      {name:'Chili-Flocken, Salz, Pfeffer',laden:'spar'},
+      {name:'Olivenöl',laden:'spar'},
+    ],
+    schritte:[
+      'Getrocknete Tomaten grob hacken. Knoblauch fein hacken.',
+      'Olivenöl in einer großen Pfanne erhitzen. Knoblauch und Chili-Flocken 1 Min. anschwitzen.',
+      'Getrocknete Tomaten dazugeben, kurz mitbraten.',
+      'Butterbohnen (abgespült und abgetropft) in die Pfanne geben, 2 Min. erhitzen.',
+      'Sahne angießen, aufkochen und 3–4 Min. einköcheln bis die Sauce cremig wird.',
+      'Spinat einrühren und zusammenfallen lassen. Parmesan einrühren.',
+      'Mit Salz, Pfeffer und frischem Basilikum abschmecken. Mit Ciabatta oder Baguette servieren.',
+    ],
+    tipp:'Dieses Gericht heißt "Marry Me" weil es so gut ist, dass man einen Heiratsantrag bekommt. Wer mag: ein Schuss Weißwein vor der Sahne gibt extra Tiefe.',
+  },
+  {
+    id:10015, name:'Spaghetti alla Carbonara', emoji:'🍝',
+    küche:'Italienisch · Klassiker',
+    tags:['viel-protein','schnell'], vegetarisch:false, zeit:25,
+    quelle:'https://www.instagram.com/reel/C3-7vigLMAo/', quelleText:'Instagram – Spaghetti alla Carbonara',
+    vonApi:false,
+    er: {kcal:860,protein:38,ballaststoffe:4,fett:54,kh:60},
+    sie:{kcal:660,protein:29,ballaststoffe:3,fett:41,kh:46},
+    zutaten:[
+      {name:'Spaghetti 400 g',laden:'spar'},
+      {name:'Guanciale oder Pancetta 200 g',laden:'spar'},
+      {name:'Eigelb 4 Stk.',laden:'hofer'},
+      {name:'Ei (ganz) 1 Stk.',laden:'hofer'},
+      {name:'Pecorino Romano gerieben 80 g',laden:'spar'},
+      {name:'Parmesan gerieben 40 g',laden:'spar'},
+      {name:'Schwarzer Pfeffer (frisch gemahlen)',laden:'spar'},
+      {name:'Salz',laden:'spar'},
+    ],
+    schritte:[
+      'Spaghetti in reichlich Salzwasser al dente kochen. 1 Tasse Nudelwasser aufheben.',
+      'Guanciale in Würfel oder Streifen schneiden, in einer Pfanne ohne Öl bei mittlerer Hitze knusprig ausbraten. Pfanne vom Herd nehmen.',
+      'Eigelbe, ganzes Ei, Pecorino, Parmesan und großzügig schwarzen Pfeffer in einer Schüssel cremig verrühren.',
+      'Heißes Nudelwasser löffelweise (!) unter die Eimasse rühren bis sie temperiert ist – das verhindert Rührei.',
+      'Pasta abgießen und sofort in die Pfanne mit dem Guanciale geben (Herd aus!). Gut schwenken.',
+      'Eimasse über die Pasta gießen und zügig mit Zangen durchmischen – die Restwärme gart die Sauce cremig.',
+      'Falls zu dick: Nudelwasser einrühren. Mit Pecorino und Pfeffer servieren.',
+    ],
+    tipp:'Das Geheimnis: kein Herd, kein Sahne, kein Zwiebel. Nur die Restwärme der Pasta und das Nudelwasser machen die Sauce cremig. Wer Guanciale nicht findet: Pancetta ist die beste Alternative.',
+  },
+  {
+    id:10016, name:'Schwedische Köttbullar', emoji:'🇸🇪',
+    küche:'Skandinavisch · Schwedisch',
+    tags:['viel-protein'], vegetarisch:false, zeit:40,
+    quelle:'https://www.instagram.com/reel/C04SgOGIw5X/', quelleText:'Instagram – Köttbullar',
+    vonApi:false,
+    er: {kcal:680,protein:38,ballaststoffe:4,fett:36,kh:44},
+    sie:{kcal:520,protein:29,ballaststoffe:3,fett:28,kh:34},
+    zutaten:[
+      {name:'Gemischtes Hackfleisch 600 g',laden:'hofer'},
+      {name:'Zwiebel 1 Stk.',laden:'hofer'},
+      {name:'Ei 1 Stk.',laden:'hofer'},
+      {name:'Semmelbrösel 3 EL',laden:'spar'},
+      {name:'Milch 3 EL',laden:'hofer'},
+      {name:'Muskat, Piment, Salz, Pfeffer',laden:'spar'},
+      {name:'Schlagsahne 200 ml',laden:'hofer'},
+      {name:'Rindssuppe / Rindsuppe 250 ml',laden:'spar'},
+      {name:'Butter',laden:'hofer'},
+      {name:'Kartoffeln 600 g (für Püree)',laden:'hofer'},
+      {name:'Preiselbeeren / Konfitüre (Glas)',laden:'spar'},
+    ],
+    schritte:[
+      'Semmelbrösel in Milch einweichen. Zwiebel sehr fein würfeln oder reiben.',
+      'Hackfleisch mit Ei, Semmelbrösel-Milch-Mischung, Zwiebel, Muskat, Piment, Salz und Pfeffer gut verkneten.',
+      'Mit angefeuchteten Händen kleine Bällchen (3 cm ø) formen.',
+      'In Butter bei mittlerer Hitze rundherum goldbraun braten (ca. 8–10 Min.). Herausnehmen.',
+      'Im Bratfett 1 EL Mehl anschwitzen, mit Suppe ablöschen, Sahne angießen. 5 Min. köcheln, abschmecken.',
+      'Kartoffeln weich kochen, stampfen, mit Butter und warmer Milch zu Püree verarbeiten.',
+      'Köttbullar in der Sauce servieren, dazu Kartoffelpüree und Preiselbeerkonfitüre.',
+    ],
+    tipp:'Das Geheimnis: Milch in den Bröseln macht die Bällchen besonders saftig. Nicht zu heiß braten – sie sollen innen saftig bleiben.',
+  },
+  {
+    id:10017, name:'Gebratener Lachs mit Spinat & Tomaten', emoji:'🐟',
+    küche:'Mediterran · Leicht',
+    tags:['schnell','viel-protein','wenig-kcal'], vegetarisch:false, zeit:20,
+    quelle:'https://www.instagram.com/p/CWEA0h8q81D/', quelleText:'Instagram – Lachs mit Spinat & Tomaten',
+    vonApi:false,
+    er: {kcal:490,protein:44,ballaststoffe:5,fett:26,kh:14},
+    sie:{kcal:375,protein:34,ballaststoffe:4,fett:20,kh:10},
+    zutaten:[
+      {name:'Lachsfilet 2 × 200 g (mit Haut)',laden:'spar'},
+      {name:'Babyspinat 200 g',laden:'spar'},
+      {name:'Kirschtomaten 250 g',laden:'spar'},
+      {name:'Knoblauch 2 Zehen',laden:'spar'},
+      {name:'Zitrone 1 Stk.',laden:'spar'},
+      {name:'Olivenöl',laden:'spar'},
+      {name:'Salz, Pfeffer, Paprikapulver',laden:'spar'},
+    ],
+    schritte:[
+      'Lachs salzen, pfeffern und mit Paprikapulver würzen.',
+      'Olivenöl in einer beschichteten Pfanne erhitzen. Lachs mit der Hautseite nach unten bei mittlerer-hoher Hitze 4 Min. braten, wenden, 2–3 Min. fertig braten. Herausnehmen.',
+      'Knoblauch im gleichen Öl 30 Sek. anschwitzen. Kirschtomaten halbiert dazugeben, 2 Min. bei hoher Hitze anbraten.',
+      'Spinat einrühren und zusammenfallen lassen. Mit Salz und Pfeffer würzen.',
+      'Lachs auf dem Spinatbett anrichten, mit Zitronensaft beträufeln.',
+    ],
+    tipp:'Lachs ist perfekt wenn er außen goldbraun und innen noch leicht rosa ist. Nicht zu lange braten – er gart auf dem Teller noch nach.',
+  },
+  {
+    id:10018, name:'Mozzarella im Speckmantel', emoji:'🧀',
+    küche:'Österreichisch · Vorspeise / Hauptgericht',
+    tags:['schnell','viel-protein'], vegetarisch:false, zeit:20,
+    quelle:'https://www.instagram.com/reel/Csl36stLXsg/', quelleText:'Instagram – Mozzarella im Speckmantel',
+    vonApi:false,
+    er: {kcal:520,protein:34,ballaststoffe:2,fett:40,kh:8},
+    sie:{kcal:400,protein:26,ballaststoffe:1,fett:30,kh:6},
+    zutaten:[
+      {name:'Büffelmozzarella 2 × 125 g',laden:'spar'},
+      {name:'Speck (Schwarzwälder oder Südtiroler) 12 Scheiben',laden:'hofer'},
+      {name:'Rucola 80 g',laden:'spar'},
+      {name:'Kirschtomaten 200 g',laden:'spar'},
+      {name:'Balsamico-Creme',laden:'spar'},
+      {name:'Olivenöl',laden:'spar'},
+      {name:'Schwarzer Pfeffer',laden:'spar'},
+    ],
+    schritte:[
+      'Mozzarella in je 3–4 Scheiben schneiden und trocken tupfen.',
+      'Jede Mozzarella-Scheibe fest in 2 Scheiben Speck einwickeln.',
+      'In einer Pfanne ohne Öl bei mittlerer Hitze den Speck knusprig braten (ca. 2–3 Min. pro Seite) bis der Mozzarella weich wird.',
+      'Rucola und halbierte Kirschtomaten auf Tellern anrichten.',
+      'Mozzarella im Speckmantel darauflegen, mit Balsamico-Creme beträufeln und mit frischem Pfeffer würzen.',
+    ],
+    tipp:'Den Mozzarella gut trockentupfen damit der Speck nicht durchweicht. Als Hauptgericht mit Ciabatta oder Baguette servieren.',
+  },
+  {
+    id:10019, name:'Spicy Mozzarella & Chicken Pasta', emoji:'🌶️',
+    küche:'Italienisch-inspiriert · Würzig',
+    tags:['viel-protein','schnell'], vegetarisch:false, zeit:30,
+    quelle:'https://www.instagram.com/p/CrLM-uooqeb/', quelleText:'Instagram – Spicy Chicken Pasta',
+    vonApi:false,
+    er: {kcal:680,protein:48,ballaststoffe:4,fett:26,kh:58},
+    sie:{kcal:520,protein:37,ballaststoffe:3,fett:20,kh:44},
+    zutaten:[
+      {name:'Hähnchenbrustfilet 500 g',laden:'hofer'},
+      {name:'Rigatoni oder Penne 400 g',laden:'spar'},
+      {name:'Mozzarella 1 × 125 g',laden:'spar'},
+      {name:'Kirschtomaten 300 g',laden:'spar'},
+      {name:'Knoblauch 3 Zehen',laden:'spar'},
+      {name:'Chili-Flocken 1–2 TL',laden:'spar'},
+      {name:'Schlagsahne 150 ml',laden:'hofer'},
+      {name:'Parmesan gerieben 50 g',laden:'spar'},
+      {name:'Basilikum frisch',laden:'spar'},
+      {name:'Olivenöl, Salz, Pfeffer',laden:'spar'},
+    ],
+    schritte:[
+      'Pasta in Salzwasser al dente kochen. Nudelwasser aufheben.',
+      'Hähnchen in Würfel schneiden, würzen. In Olivenöl bei hoher Hitze 4–5 Min. goldbraun anbraten. Herausnehmen.',
+      'Knoblauch und Chili-Flocken im gleichen Öl kurz anschwitzen. Kirschtomaten halbiert dazugeben, 3 Min. braten.',
+      'Sahne angießen, kurz einköcheln. Parmesan einrühren.',
+      'Hähnchen zurück in die Pfanne, Pasta dazu, gut schwenken. Bei Bedarf Nudelwasser einrühren.',
+      'Mozzarella in Stücken darüber, Deckel kurz drauf damit er schmilzt.',
+      'Mit frischem Basilikum und extra Chili-Flocken servieren.',
+    ],
+    tipp:'Für mehr Schärfe: frische Chili statt Flocken. Wer es milder mag: Sahne erhöhen und Chili reduzieren.',
+  },
+  {
+    id:10020, name:'Gebratene Chicken Legs & Wings', emoji:'🍗',
+    küche:'Amerikanisch-österreichisch · Knusprig',
+    tags:['viel-protein'], vegetarisch:false, zeit:50,
+    quelle:'https://www.instagram.com/p/CPf3zcZrh87/', quelleText:'Instagram – Chicken Legs & Wings',
+    vonApi:false,
+    er: {kcal:580,protein:50,ballaststoffe:2,fett:36,kh:12},
+    sie:{kcal:445,protein:38,ballaststoffe:1,fett:27,kh:9},
+    zutaten:[
+      {name:'Hähnchenkeulen 4 Stk. oder Wings 1 kg',laden:'hofer'},
+      {name:'Knoblauchpulver 1 TL',laden:'spar'},
+      {name:'Paprikapulver (edelsüß + geräuchert)',laden:'spar'},
+      {name:'Zwiebelpulver ½ TL',laden:'spar'},
+      {name:'Oregano, Thymian',laden:'spar'},
+      {name:'Olivenöl 3 EL',laden:'spar'},
+      {name:'Salz, Pfeffer, Chili-Flocken',laden:'spar'},
+      {name:'Zitrone 1 Stk.',laden:'spar'},
+    ],
+    schritte:[
+      'Hähnchen trocken tupfen. Alle Gewürze mit Olivenöl zu einer Paste mischen.',
+      'Hähnchen rundum großzügig mit der Gewürzpaste einreiben. Wenn möglich 1 Stunde (oder über Nacht) marinieren.',
+      'Ofen auf 220 °C Ober-/Unterhitze vorheizen.',
+      'Hähnchen auf einem Backblech verteilen (mit Abstand!). 35–40 Min. backen bis die Haut goldbraun und knusprig ist.',
+      'Kurz ruhen lassen. Mit Zitronensaft bespritzen und servieren.',
+    ],
+    tipp:'Für extra Knusprigkeit: Hähnchen unbedeckt im Kühlschrank über Nacht trocknen lassen. Die trockene Haut wird beim Braten perfekt kross.',
+  },
+  {
+    id:10021, name:'Currywurst', emoji:'🌭',
+    küche:'Deutsch · Straßenessen',
+    tags:['schnell'], vegetarisch:false, zeit:25,
+    quelle:'https://www.instagram.com/p/CRJxBGQqjrY/', quelleText:'Instagram – Currywurst',
+    vonApi:false,
+    er: {kcal:810,protein:28,ballaststoffe:5,fett:48,kh:68},
+    sie:{kcal:620,protein:22,ballaststoffe:4,fett:36,kh:52},
+    zutaten:[
+      {name:'Bratwurst / Brühwurst 4 Stk.',laden:'hofer'},
+      {name:'Kartoffeln 700 g (für Pommes)',laden:'hofer'},
+      {name:'Ketchup 200 ml',laden:'spar'},
+      {name:'Currypulver 2 TL',laden:'spar'},
+      {name:'Paprikapulver 1 TL',laden:'spar'},
+      {name:'Worcestershire-Sauce 1 TL',laden:'spar'},
+      {name:'Zucker, Salz',laden:'spar'},
+      {name:'Öl zum Frittieren oder Backofenpommes',laden:'hofer'},
+    ],
+    schritte:[
+      'Pommes: Kartoffeln schälen, in Stifte schneiden, wässern und trocken tupfen. Bei 200 °C Heißluft 30–35 Min. backen (mit Öl und Salz).',
+      'Currysauce: Ketchup mit Currypulver, Paprika, Worcestershire und einer Prise Zucker in einem kleinen Topf erwärmen und 5 Min. köcheln. Abschmecken.',
+      'Würste in einer Pfanne mit etwas Öl rundherum goldbraun braten (ca. 8–10 Min.).',
+      'Würste in Scheiben schneiden, auf Teller geben.',
+      'Großzügig Currysauce darübergeben, mit Currypulver bestäuben.',
+      'Mit Pommes und Senf servieren.',
+    ],
+    tipp:'Die Currysauce kann auf Vorrat gemacht und im Kühlschrank 5 Tage aufbewahrt werden. Für die klassische Berliner Currywurst: Wurst ohne Darm verwenden.',
+  },
 ];
 
 // ════════════════════════════════════════════════════════
@@ -926,12 +1208,22 @@ function getRecipePool() {
 function saveRecipePool(pool) {
   try { localStorage.setItem(POOL_KEY, JSON.stringify(pool)); } catch(e){}
 }
+// Returns the ISO week number for a date
+function getWeekKey(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2,'0')}`;
+}
+
 function getTodayState() {
   try {
     const raw = JSON.parse(localStorage.getItem(QIDX_KEY) || '{}');
-    if (raw.date === new Date().toISOString().slice(0,10)) return raw;
+    // Use week key instead of day key → only fetch once per week
+    if (raw.week === getWeekKey()) return raw;
   } catch(e){}
-  return { date: new Date().toISOString().slice(0,10), usedIdx: [], fetchedToday: 0 };
+  return { week: getWeekKey(), usedIdx: [], fetchedToday: 0 };
 }
 function saveTodayState(s) {
   try { localStorage.setItem(QIDX_KEY, JSON.stringify(s)); } catch(e){}
@@ -955,9 +1247,9 @@ async function fetchRezepteBatch() {
 
   showApiLoading(true, `Suche: "${query}"...`);
   try {
-    const url = `${API_BASE}/recipes/complexSearch?apiKey=${API_KEY}&query=${encodeURIComponent(query)}&number=8&addRecipeNutrition=true&instructionsRequired=true&fillIngredients=false&sort=random&offset=${offset}`;
+    const url = `${API_BASE}/recipes/complexSearch?apiKey=${API_KEY}&query=${encodeURIComponent(query)}&number=8&addRecipeInformation=true&instructionsRequired=true&fillIngredients=true&sort=random&offset=${offset}`;
     const data = await rateLimitedFetch(url);
-    spendPoints(2);
+    spendPoints(1); // 1 point per search (no addRecipeNutrition = no per-recipe charges)
 
     const neu = (data.results || [])
       .map((item, i) => mapSpoonacularToRezept(item, i))
@@ -1443,7 +1735,7 @@ async function init(){
 
   // ── Schritt 2: Neue Batches holen solange Quota reicht (max 3×) ──
   let neuGesamt = 0;
-  for (let runde = 0; runde < 3; runde++) {
+  for (let runde = 0; runde < 2; runde++) { // max 2 calls = 2 points per session
     const q = getQuotaState();
     if (q.left < 3) break;
 
