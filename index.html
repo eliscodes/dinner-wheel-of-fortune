@@ -463,7 +463,7 @@ function setCache(data) {
 // ════════════════════════════════════════════════════════
 //  SPOONACULAR → INTERNAL FORMAT CONVERSION
 // ════════════════════════════════════════════════════════
-const FOOD_EMOJIS = ['🍝','🥘','🍲','🥗','🍛','🍜','🫕','🥙','🍖','🥩','🐟','🦐','🍳','🌿','🫑','🥒','🍤','🦋','🧆'];
+const FOOD_EMOJIS = ['🍝','🥘','🍲','🥗','🍛','🍜','🫕','🥙','🍖','🥩','🐟','🦐','🍳','🌿','🫑','🥒','🍤','🦋'];
 
 function nutriVal(nutrients, name) {
   const n = (nutrients||[]).find(x => x.name === name);
@@ -822,6 +822,38 @@ const EIGENE_REZEPTE = [
     tipp:'TK-Garnelen in kaltem Wasser in 10 Min. auftauen. Sriracha ins Dressing für mehr Schärfe.',
   },
   {
+    id:10022, name:'Griechischer Salat mit Pitabrot', emoji:'🥗',
+    küche:'Griechisch · Mediterran',
+    tags:['vegetarisch','wenig-kcal','viel-ballaststoffe','schnell'], vegetarisch:true, zeit:20,
+    quelle:'https://www.instagram.com/reel/DVf0DlBD6yO/', quelleText:'Instagram – Griechischer Salat',
+    vonApi:false,
+    er: {kcal:620,protein:22,ballaststoffe:9,fett:38,kh:44},
+    sie:{kcal:475,protein:17,ballaststoffe:7,fett:29,kh:34},
+    zutaten:[
+      {name:'Feta-Käse 400 g (Blockform)',laden:'hofer'},
+      {name:'Kirschtomaten 300 g oder Fleischtomaten 3 Stk.',laden:'spar'},
+      {name:'Salatgurke 1 Stk.',laden:'hofer'},
+      {name:'Rote Paprika 1 Stk.',laden:'hofer'},
+      {name:'Rote Zwiebel 1 Stk.',laden:'hofer'},
+      {name:'Kalamata-Oliven 100 g',laden:'spar'},
+      {name:'Olivenöl extra vergine 4 EL',laden:'spar'},
+      {name:'Rotweinessig 1 EL',laden:'spar'},
+      {name:'Oregano getrocknet',laden:'spar'},
+      {name:'Salz, Pfeffer',laden:'spar'},
+      {name:'Pitabrot 4 Stk.',laden:'spar'},
+      {name:'Butter oder Olivenöl für Pitas',laden:'hofer'},
+    ],
+    schritte:[
+      'Tomaten halbieren (oder in Spalten schneiden), Gurke in Halbmonde, Paprika in Streifen, rote Zwiebel in dünne Ringe schneiden. Alles in eine große Schüssel geben.',
+      'Oliven dazugeben. Feta als ganzen Block oben drauflegen – nicht zerbröseln, das macht es authentisch!',
+      'Olivenöl und Rotweinessig darübergießen, großzügig Oregano darüberstreuen. Leicht salzen (Feta ist schon salzig), pfeffern.',
+      '5 Minuten ziehen lassen, dann erst unterheben – so bleibt der Feta in schönen Stücken.',
+      'Pitabrote in einer trockenen Pfanne oder im Toaster kurz erwärmen. Nach Wunsch mit etwas Butter oder Olivenöl bestreichen und in Streifen schneiden.',
+      'Salat mit den warmen Pitastreifen zum Dippen und Schöpfen servieren.',
+    ],
+    tipp:'Den Feta als ganzen Block lassen und erst am Tisch einrühren – das ist die griechische Art (Choriatiki). Wer mag: extra Tzatziki dazu reichen oder Hummus als zweite Beilage. Die Pitas lassen sich auch im Ofen bei 180 °C für 5 Min. aufwärmen.',
+  },
+  {
     id:10013, name:'Chicken Katsu', emoji:'🍱',
     küche:'Japanisch · Knusprig gebraten',
     tags:['viel-protein'], vegetarisch:false, zeit:35,
@@ -911,7 +943,7 @@ const EIGENE_REZEPTE = [
     tipp:'Das Geheimnis: kein Herd, kein Sahne, kein Zwiebel. Nur die Restwärme der Pasta und das Nudelwasser machen die Sauce cremig. Wer Guanciale nicht findet: Pancetta ist die beste Alternative.',
   },
   {
-    id:10016, name:'Schwedische Köttbullar', emoji:'🧆',
+    id:10016, name:'Schwedische Köttbullar', emoji:'🇸🇪',
     küche:'Skandinavisch · Schwedisch',
     tags:['viel-protein'], vegetarisch:false, zeit:40,
     quelle:'https://www.instagram.com/reel/C04SgOGIw5X/', quelleText:'Instagram – Köttbullar',
