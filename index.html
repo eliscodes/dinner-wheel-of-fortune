@@ -460,6 +460,47 @@ function setCache(data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch(e){}
 }
 
+// ═══════════════════════════════════════════════════════
+//  BACKUP SYSTEM
+// ═══════════════════════════════════════════════════════
+const BACKUP_KEY = 'dinnerspin_backup_v1';
+const BACKUP_INTERVAL = 24 * 60 * 60 * 1000;
+
+function getBackupData() {
+  try {
+    const raw = localStorage.getItem('dinnerspin_favorites');
+    const favs = raw ? JSON.parse(raw) : [];
+    const blRaw = localStorage.getItem('dinnerspin_blacklist');
+    const bl = blRaw ? JSON.parse(blRaw) : [];
+    const listRaw = localStorage.getItem('dinnerspin_grocery');
+    const list = listRaw ? JSON.parse(listRaw) : [];
+    const weekRaw = localStorage.getItem('dinnerspin_weekplan');
+    const week = weekRaw ? JSON.parse(weekRaw) : null;
+    return { favs, bl, list, week, timestamp: Date.now() };
+  } catch(e) { return null; }
+}
+
+function createBackup() {
+  const data = getBackupData();
+  if (!data) return false;
+  try {
+    const backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+    backups.push(data);
+    if (backups.length > 30) backups.shift();
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
+    return true;
+  } catch(e) { return false; }
+}
+
+function initAutoBackup() {
+  const lastBackup = localStorage.getItem('dinnerspin_last_backup');
+  const now = Date.now();
+  if (!lastBackup || now - parseInt(lastBackup) > BACKUP_INTERVAL) {
+    createBackup();
+    localStorage.setItem('dinnerspin_last_backup', now.toString());
+  }
+}
+
 // ════════════════════════════════════════════════════════
 //  SPOONACULAR → INTERNAL FORMAT CONVERSION
 // ════════════════════════════════════════════════════════
@@ -943,7 +984,7 @@ const EIGENE_REZEPTE = [
     tipp:'Das Geheimnis: kein Herd, kein Sahne, kein Zwiebel. Nur die Restwärme der Pasta und das Nudelwasser machen die Sauce cremig. Wer Guanciale nicht findet: Pancetta ist die beste Alternative.',
   },
   {
-    id:10016, name:'Schwedische Köttbullar', emoji:'🇸🇪',
+    id:10016, name:'Schwedische Köttbullar', emoji:'🧆',
     küche:'Skandinavisch · Schwedisch',
     tags:['viel-protein'], vegetarisch:false, zeit:40,
     quelle:'https://www.instagram.com/reel/C04SgOGIw5X/', quelleText:'Instagram – Köttbullar',
@@ -1752,6 +1793,7 @@ function setApiStatus(icon, text, color='rgba(255,255,255,.1)') {
 }
 
 async function init(){
+  initAutoBackup();
   updateQuotaBadge();
 
   // ── Schritt 1: Saved pool SOFORT ins Rad laden (kein Warten auf API) ──
