@@ -42,6 +42,7 @@
     }
     .persona-btn.active { background:var(--gold); border-color:var(--gold); color:var(--dark); font-weight:600; }
     .persona-btn:hover:not(.active) { background:rgba(255,255,255,.18); }
+    .header-controls { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
     .main-wrap {
       max-width:1280px; margin:0 auto; padding:2rem;
       display:grid; grid-template-columns:1fr 360px; gap:2rem;
@@ -220,164 +221,216 @@
     
     /* 📱 MOBILE RESPONSIVE */
     @media(max-width:920px) {
-      .main-wrap{grid-template-columns:1fr;padding:1rem;gap:1rem;}
-      .wheel-outer{width:300px;height:300px;}
-      .sidebar{display:flex;flex-direction:row;flex-wrap:wrap;gap:0.75rem;}
-      .sidebar .panel{flex:1;min-width:280px;padding:1rem;}
-      .wheel-col{order:1;}
-      .sidebar{order:2;}
-      .browser-wrap{padding:0 1rem 1.5rem;}
+      .main-wrap {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+        gap: 1rem;
+      }
+      .wheel-outer { width: 300px; height: 300px; }
+      .wheel-col { order: 1; }
+      .sidebar { 
+        order: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .sidebar .panel {
+        flex: none;
+        width: 100%;
+        padding: 1rem;
+      }
+      .browser-wrap { padding: 0 1rem 1.5rem; }
     }
+    
+    /* 📱 TABLET (481px - 768px) */
     @media(max-width:768px) {
-      header{padding:0.6rem 0.75rem;gap:0.5rem;}
-      .logo{flex:1;min-width:120px;}
-      .logo-icon{font-size:1.6rem;}
-      .logo-text h1{font-size:1.2rem;}
-      .logo-text p{font-size:.65rem;display:none;}
-      .persona-wrap{display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;}
-      .persona-label{font-size:.65rem;display:none;}
-      .persona-btn{font-size:.7rem;padding:.25rem .5rem;border-radius:16px;}
-      .persona-btn.active{background:var(--gold);}
-      .quota-badge{min-width:90px;padding:.25rem .4rem;font-size:.6rem;border-radius:8px;}
-      .quota-bar-wrap{min-width:35px;height:3px;}
-      .main-wrap{padding:0.75rem;gap:0.75rem;}
-      .wheel-outer{width:260px;height:260px;}
-      .wheel-pointer{width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:24px solid var(--rust);}
-      .spin-btn{padding:0.7rem 1.4rem;font-size:0.9rem;border-radius:30px;margin-top:0.5rem;}
-      .wheel-col{gap:0.5rem;}
-      .result-card{padding:1rem;border-radius:14px;margin-top:0.75rem;}
-      .result-header{gap:0.5rem;align-items:flex-start;}
-      .result-emoji{font-size:2.2rem;}
-      .result-meta{flex:1;min-width:0;}
-      .result-name{font-size:1.25rem;line-height:1.2;}
-      .result-cuisine{font-size:.75rem;}
-      .result-time{font-size:.65rem;padding:.2rem .4rem;border-radius:6px;}
-      .tags{margin-bottom:0.75rem;gap:.2rem;}
-      .tag{font-size:.6rem;padding:.12rem .4rem;border-radius:12px;}
-      .nutri-grid{grid-template-columns:repeat(4,1fr);gap:.3rem;margin-bottom:.5rem;}
-      .nutri-box{padding:.3rem .2rem;border-radius:8px;}
-      .nutri-val{font-size:.95rem;}
-      .nutri-label{font-size:.5rem;}
-      .kcal-bar-wrap{height:4px;margin-bottom:.2rem;}
-      .kcal-pct{font-size:.6rem;margin-bottom:.5rem;}
-      .source-link{font-size:.7rem;margin-bottom:.75rem;}
-      .result-actions{gap:.3rem;flex-wrap:wrap;}
-      .result-actions .btn{font-size:.75rem;padding:.4rem .6rem;border-radius:8px;}
-      .sidebar{flex-direction:column;gap:0.75rem;}
-      .sidebar .panel{min-width:100%;}
-      .filter-grid{grid-template-columns:repeat(3,1fr);gap:.3rem;}
-      .fc{padding:0.4rem .3rem;font-size:.7rem;min-height:44px;border-radius:8px;}
-      .filter-hint{font-size:.6rem;margin-top:.4rem;}
-      .panel-title{font-size:.95rem;margin-bottom:.75rem;}
-      .grocery-item{padding:.35rem 0;font-size:.8rem;}
-      .grocery-item input[type=checkbox]{width:18px;height:18px;}
-      .browser-wrap{padding:0 0.75rem 1.25rem;}
-      .browser-header{margin-bottom:1rem;gap:0.5rem;}
-      .browser-title{font-size:1.2rem;}
-      .btn-gold{font-size:.8rem;padding:.4rem .8rem;}
-      .meal-grid{grid-template-columns:repeat(2,1fr);gap:0.5rem;}
-      .meal-card{padding:0.75rem;border-radius:12px;}
-      .card-emoji{font-size:1.6rem;margin-bottom:.3rem;}
-      .card-name{font-size:.82rem;}
-      .card-sub{font-size:.65rem;margin-bottom:.4rem;}
-      .meal-card.meal-fav{border-width:2px;}
-      .modal{width:90vw;max-width:90vw;padding:1rem;border-radius:16px;max-height:85vh;}
-      .modal-head{margin-bottom:1rem;padding-bottom:0.5rem;}
-      .modal-title{font-size:1.2rem;}
-      .close-btn{width:32px;height:32px;font-size:.9rem;}
-      .rezept-modal{width:92vw;max-width:92vw;padding:0.9rem;}
-      .rezept-nutri-grid{grid-template-columns:repeat(5,1fr);gap:.25rem;}
-      .rnutri{padding:.25rem .15rem;border-radius:6px;}
-      .rnutri-val{font-size:.85rem;}
-      .rnutri-lbl{font-size:.5rem;}
-      .rezept-section{margin-bottom:0.75rem;}
-      .rezept-section-title{font-size:.95rem;margin-bottom:.5rem;padding-bottom:.2rem;}
-      .zutaten-list li{padding:.25rem 0;font-size:.8rem;}
-      .schritte-list li{font-size:.8rem;padding:.4rem 0;gap:.4rem;}
-      .schritte-list li::before{width:22px;height:22px;font-size:.65rem;}
-      .week-row{grid-template-columns:60px 1fr auto;gap:.4rem;padding:.35rem 0;}
-      .week-day{font-size:.65rem;}
-      .week-meal{font-size:.75rem;padding:.25rem .4rem;}
-      .week-sub{font-size:.55rem;}
-      .week-respin{width:26px;height:26px;font-size:.85rem;}
-      .modal-actions{gap:.4rem;margin-top:1rem;flex-wrap:wrap;}
-      .modal-actions .btn{font-size:.75rem;padding:.35rem .7rem;border-radius:8px;}
+      /* Header */
+      header {
+        padding: 0.6rem 0.5rem;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 0.3rem;
+      }
+      .logo-icon { font-size: 1.4rem; }
+      .logo-text h1 { font-size: 1.1rem; }
+      .logo-text p { display: none; }
+      
+      /* Controls area */
+      header > div:not(.logo) {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 0.4rem;
+        width: 100%;
+      }
+      .quota-badge {
+        min-width: 80px;
+        padding: 0.2rem 0.4rem;
+        font-size: 0.6rem;
+        border-radius: 6px;
+      }
+      .quota-bar-wrap { min-width: 30px; height: 3px; }
+      .persona-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .persona-label { display: none; }
+      .persona-btn {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.4rem;
+        border-radius: 12px;
+      }
+      .persona-btn.active { background: var(--gold); }
+      
+      /* Main layout */
+      .main-wrap {
+        padding: 0.75rem;
+        gap: 0.75rem;
+      }
+      .wheel-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        order: 1;
+      }
+      .wheel-outer { width: 260px; height: 260px; }
+      .wheel-pointer {
+        top: -16px;
+        border-left-width: 10px;
+        border-right-width: 10px;
+        border-top-width: 20px;
+      }
+      .spin-btn {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+        border-radius: 25px;
+        width: 100%;
+        max-width: 280px;
+      }
+      
+      /* Result card */
+      .result-card {
+        width: 100%;
+        max-width: 100%;
+        padding: 0.85rem;
+        border-radius: 12px;
+        margin-top: 0.5rem;
+      }
+      .result-header {
+        gap: 0.4rem;
+        margin-bottom: 0.5rem;
+      }
+      .result-emoji { font-size: 2rem; }
+      .result-meta { flex: 1; min-width: 0; }
+      .result-name { font-size: 1.1rem; margin-bottom: 0.15rem; }
+      .result-cuisine { font-size: 0.7rem; }
+      .result-time { font-size: 0.6rem; padding: 0.15rem 0.35rem; }
+      .tags { gap: 0.2rem; margin-bottom: 0.5rem; }
+      .tag { font-size: 0.55rem; padding: 0.1rem 0.35rem; border-radius: 10px; }
+      .nutri-grid { grid-template-columns: repeat(2, 1fr); gap: 0.25rem; margin-bottom: 0.4rem; }
+      .nutri-box { padding: 0.25rem 0.15rem; border-radius: 6px; }
+      .nutri-val { font-size: 0.85rem; }
+      .nutri-label { font-size: 0.45rem; }
+      .result-actions { gap: 0.25rem; flex-wrap: wrap; justify-content: center; }
+      .result-actions .btn { font-size: 0.7rem; padding: 0.35rem 0.5rem; border-radius: 6px; }
+      
+      /* Sidebar */
+      .sidebar { order: 2; gap: 0.5rem; }
+      .panel { padding: 0.85rem; border-radius: 12px; }
+      .panel-title { font-size: 0.9rem; margin-bottom: 0.5rem; }
+      .filter-grid { grid-template-columns: repeat(2, 1fr); gap: 0.25rem; }
+      .fc {
+        font-size: 0.68rem;
+        padding: 0.35rem 0.25rem;
+        min-height: 44px;
+        border-radius: 8px;
+      }
+      .filter-hint { font-size: 0.55rem; margin-top: 0.3rem; }
+      .grocery-item { padding: 0.3rem 0; font-size: 0.75rem; }
+      .grocery-item input[type=checkbox] { width: 16px; height: 16px; }
+      
+      /* Browser */
+      .browser-wrap { padding: 0 0.5rem 1rem; }
+      .browser-header { margin-bottom: 0.75rem; gap: 0.5rem; flex-wrap: wrap; }
+      .browser-title { font-size: 1.1rem; }
+      .btn-gold { font-size: 0.75rem; padding: 0.35rem 0.7rem; width: 100%; text-align: center; }
+      .meal-grid { grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+      .meal-card { padding: 0.6rem; border-radius: 10px; }
+      .card-emoji { font-size: 1.4rem; margin-bottom: 0.2rem; }
+      .card-name { font-size: 0.75rem; }
+      .card-sub { font-size: 0.6rem; margin-bottom: 0.3rem; }
+      .card-badges { gap: 0.15rem; }
+      .badge { font-size: 0.5rem; padding: 0.08rem 0.2rem; border-radius: 4px; }
+      
+      /* Modals */
+      .modal {
+        width: 92vw;
+        max-width: 92vw;
+        padding: 0.85rem;
+        border-radius: 14px;
+        max-height: 88vh;
+      }
+      .modal-head { margin-bottom: 0.75rem; padding-bottom: 0.4rem; }
+      .modal-title { font-size: 1.1rem; }
+      .close-btn { width: 28px; height: 28px; font-size: 0.8rem; }
+      .rezept-modal { width: 94vw; max-width: 94vw; padding: 0.75rem; }
+      .rezept-hero { flex-direction: column; gap: 0.3rem; margin-bottom: 0.75rem; }
+      .rezept-emoji-big { font-size: 2.2rem; }
+      .rezept-hero-name { font-size: 1.2rem; }
+      .rezept-hero-sub { font-size: 0.75rem; }
+      .rezept-statis { gap: 0.25rem; flex-wrap: wrap; }
+      .rstat { font-size: 0.6rem; padding: 0.15rem 0.35rem; border-radius: 5px; }
+      .rezept-nutri-grid { grid-template-columns: repeat(3, 1fr); gap: 0.2rem; }
+      .rnutri { padding: 0.2rem 0.1rem; border-radius: 6px; }
+      .rnutri-val { font-size: 0.75rem; }
+      .rnutri-lbl { font-size: 0.45rem; }
+      .rezept-section { margin-bottom: 0.5rem; }
+      .rezept-section-title { font-size: 0.9rem; margin-bottom: 0.35rem; padding-bottom: 0.15rem; }
+      .zutaten-list li { padding: 0.2rem 0; font-size: 0.75rem; }
+      .schritte-list li { font-size: 0.75rem; padding: 0.35rem 0; gap: 0.35rem; }
+      .schritte-list li::before { width: 20px; height: 20px; font-size: 0.6rem; }
+      .week-row { grid-template-columns: 55px 1fr auto; gap: 0.3rem; padding: 0.3rem 0; }
+      .week-day { font-size: 0.6rem; }
+      .week-meal { font-size: 0.7rem; padding: 0.2rem 0.35rem; }
+      .week-sub { font-size: 0.5rem; }
+      .week-respin { width: 24px; height: 24px; font-size: 0.8rem; }
+      .modal-actions { gap: 0.3rem; margin-top: 0.75rem; flex-wrap: wrap; justify-content: center; }
+      .modal-actions .btn { font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 6px; }
     }
-    @media(max-width:500px) {
-      .main-wrap{padding:0.5rem;gap:0.5rem;}
-      .wheel-outer{width:220px;height:220px;}
-      .wheel-pointer{top:-16px;border-top-width:20px;border-left-width:10px;border-right-width:10px;}
-      .spin-btn{padding:0.6rem 1.2rem;font-size:.85rem;border-radius:25px;}
-      header{padding:0.5rem;}
-      .logo{flex:0 0 auto;}
-      .logo-icon{font-size:1.4rem;}
-      .logo-text h1{font-size:1rem;}
-      .logo-text p{display:none;}
-      .persona-wrap{width:100%;justify-content:center;margin-top:0.35rem;gap:0.25rem;}
-      .persona-btn{font-size:.65rem;padding:.2rem .4rem;}
-      .quota-badge{min-width:70px;padding:.2rem .3rem;font-size:.55rem;border-radius:6px;}
-      .quota-bar-wrap{min-width:25px;height:2px;}
-      .quota-icon{font-size:.8rem;}
-      .result-card{padding:0.85rem;border-radius:12px;}
-      .result-header{gap:0.4rem;}
-      .result-emoji{font-size:1.8rem;}
-      .result-name{font-size:1.1rem;}
-      .result-cuisine{font-size:.7rem;}
-      .result-time{font-size:.6rem;padding:.15rem .35rem;}
-      .tags{gap:.15rem;margin-bottom:0.5rem;}
-      .tag{font-size:.55rem;padding:.1rem .35rem;}
-      .nutri-grid{grid-template-columns:repeat(2,1fr);gap:.25rem;}
-      .nutri-box{padding:.25rem .15rem;}
-      .nutri-val{font-size:.85rem;}
-      .nutri-label{font-size:.45rem;}
-      .result-actions{gap:.25rem;}
-      .result-actions .btn{font-size:.7rem;padding:.35rem .5rem;}
-      .panel{padding:0.85rem;border-radius:12px;}
-      .panel-title{font-size:.9rem;margin-bottom:.5rem;}
-      .filter-grid{grid-template-columns:repeat(2,1fr);gap:.25rem;}
-      .fc{font-size:.68rem;padding:.35rem .3rem;min-height:44px;}
-      .grocery-item{font-size:.75rem;padding:.3rem 0;}
-      .grocery-item input[type=checkbox]{width:16px;height:16px;}
-      .btn-fill,.btn-rust,.btn-gold{width:100%;text-align:center;margin-top:.25rem;}
-      .browser-wrap{padding:0 0.5rem 1rem;}
-      .browser-title{font-size:1rem;}
-      .btn-gold{font-size:.75rem;padding:.35rem .7rem;}
-      .meal-grid{grid-template-columns:1fr 1fr;gap:0.4rem;}
-      .meal-card{padding:0.6rem;border-radius:10px;}
-      .card-emoji{font-size:1.4rem;}
-      .card-name{font-size:.75rem;}
-      .card-sub{font-size:.6rem;}
-      .card-badges{gap:.15rem;}
-      .badge{font-size:.55rem;padding:.08rem .25rem;border-radius:4px;}
-      .modal{padding:0.85rem;border-radius:12px;max-height:90vh;}
-      .modal-title{font-size:1.1rem;}
-      .close-btn{width:28px;height:28px;font-size:.8rem;}
-      .rezept-modal{padding:0.75rem;}
-      .rezept-hero{flex-direction:column;gap:0.4rem;margin-bottom:1rem;}
-      .rezept-emoji-big{font-size:2.5rem;}
-      .rezept-hero-name{font-size:1.2rem;}
-      .rezept-hero-sub{font-size:.75rem;}
-      .rezept-statis{gap:.3rem;}
-      .rstat{font-size:.65rem;padding:.2rem .4rem;border-radius:6px;}
-      .rezept-nutri-grid{grid-template-columns:repeat(3,1fr);gap:.2rem;}
-      .rnutri{padding:.2rem .1rem;border-radius:6px;}
-      .rnutri-val{font-size:.75rem;}
-      .rnutri-lbl{font-size:.45rem;}
-      .rezept-section{margin-bottom:0.6rem;}
-      .rezept-section-title{font-size:.9rem;margin-bottom:.4rem;padding-bottom:.15rem;}
-      .zutaten-list li{font-size:.75rem;padding:.2rem 0;}
-      .z-dot{width:5px;height:5px;}
-      .z-store{font-size:.6rem;padding:.08rem .3rem;}
-      .schritte-list li{font-size:.75rem;padding:.35rem 0;gap:.35rem;}
-      .schritte-list li::before{width:20px;height:20px;font-size:.6rem;margin-top:0;}
-      .tipp-box{padding:.6rem .8rem;font-size:.75rem;border-radius:8px;}
-      .week-row{grid-template-columns:50px 1fr auto;gap:.3rem;padding:.3rem 0;}
-      .week-day{font-size:.6rem;}
-      .week-meal{font-size:.7rem;padding:.2rem .35rem;}
-      .week-sub{font-size:.5rem;}
-      .week-respin{width:24px;height:24px;font-size:.8rem;}
-      .modal-actions{gap:.3rem;}
-      .modal-actions .btn{font-size:.7rem;padding:.3rem .6rem;border-radius:6px;}
+    
+    /* 📱 SMALL PHONE (max 480px) */
+    @media(max-width:480px) {
+      .main-wrap { padding: 0.4rem; gap: 0.4rem; }
+      .wheel-outer { width: 200px; height: 200px; }
+      .wheel-pointer { top: -12px; border-left-width: 8px; border-right-width: 8px; border-top-width: 16px; }
+      .spin-btn { padding: 0.5rem 1rem; font-size: 0.8rem; }
+      .wheel-col { gap: 0.4rem; }
+      .result-card { padding: 0.7rem; border-radius: 10px; }
+      .result-emoji { font-size: 1.8rem; }
+      .result-name { font-size: 1rem; }
+      .nutri-grid { gap: 0.2rem; }
+      .nutri-val { font-size: 0.75rem; }
+      .panel { padding: 0.7rem; border-radius: 10px; }
+      .filter-grid { gap: 0.2rem; }
+      .fc { font-size: 0.62rem; padding: 0.3rem 0.2rem; }
+      .meal-card { padding: 0.5rem; }
+      .card-emoji { font-size: 1.2rem; }
+      .card-name { font-size: 0.7rem; }
+      .modal { padding: 0.7rem; }
+      .rezept-hero-name { font-size: 1.1rem; }
     }
     
     /* 📱 TEST INDICATOR - shows current breakpoint */
@@ -404,7 +457,7 @@
       <p>Was kochen wir heute Abend?</p>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+  <div class="header-controls">
     <div id="quotaBadge" class="quota-badge quota-ok" title="Spoonacular API – kostenloser Plan: 50 Punkte/Tag">
       <span class="quota-icon">🔌</span>
       <span id="quotaText">API …</span>
@@ -1985,36 +2038,33 @@ async function init(){
   rezeptGridZeigen();
   setApiStatus('⏳', `${REZEPTE.length} Rezepte geladen, suche neue…`);
 
-  // ── Schritt 2: Neue Batches holen solange Quota reicht (max 3×) ──
-  let neuGesamt = 0;
-  for (let runde = 0; runde < 2; runde++) { // max 2 calls = 2 points per session
+  // ── Schritt 2: Neue Batches holen (nur 1× pro Woche) ──
+  const today = getTodayState();
+  if (today.fetchedToday > 0) {
+    setApiStatus('✅', `${REZEPTE.length} Rezepte aus Pool`, 'rgba(74,140,106,.3)');
+  } else {
+    let neuGesamt = 0;
+    // Nur EIN fetch pro Woche (spart API Punkte)
     const q = getQuotaState();
-    if (q.left < 3) break;
-
-    const today = getTodayState();
-    const available = QUERY_POOL.map((_,i) => i).filter(i => !today.usedIdx.includes(i));
-    if (available.length === 0) break;
-
-    let neueRezepte = [];
-    try {
-      neueRezepte = await fetchRezepteBatch();
-    } catch(e) {
-      console.warn('Fetch error:', e);
-      break;
+    if (q.left >= 1) {
+      const available = QUERY_POOL.map((_,i) => i).filter(i => !today.usedIdx.includes(i));
+      if (available.length > 0) {
+        try {
+          const neueRezepte = await fetchRezepteBatch();
+          const existingIds = new Set(REZEPTE.map(r => r.id));
+          const neu = neueRezepte.filter(r => !existingIds.has(r.id));
+          if (neu.length) {
+            REZEPTE = [...REZEPTE, ...neu];
+            neuGesamt += neu.length;
+            radZeichnen();
+            rezeptGridZeigen();
+          }
+        } catch(e) {
+          console.warn('Fetch error:', e);
+        }
+      }
     }
-
-    // Merge any new ones into REZEPTE
-    const existingIds = new Set(REZEPTE.map(r => r.id));
-    const neu = neueRezepte.filter(r => !existingIds.has(r.id));
-    if (neu.length) {
-      REZEPTE = [...REZEPTE, ...neu];
-      neuGesamt += neu.length;
-      radZeichnen();
-      rezeptGridZeigen();
-      setApiStatus('⏳', `${REZEPTE.length} Rezepte – lade weitere…`);
-    } else {
-      break; // no new recipes, stop fetching
-    }
+    setApiStatus('✅', `${REZEPTE.length} Rezepte${neuGesamt ? ' (+'+neuGesamt+' neu)' : ''}`, 'rgba(74,140,106,.3)');
   }
 
   // ── Schritt 3: Status anzeigen ──
